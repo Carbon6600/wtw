@@ -514,6 +514,90 @@
             from { opacity: 0; transform: translateY(40px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        /* QR Dropdown Styles */
+        .qr-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .qr-dropdown-content {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            z-index: 1000;
+            margin-top: 10px;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .qr-dropdown-content::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-left: 10px solid transparent;
+            border-right: 10px solid transparent;
+            border-bottom: 10px solid white;
+        }
+
+        .qr-dropdown-content.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .qr-dropdown-content p {
+            color: #333;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .qr-close {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        /* UAKino Player Styles */
+        .uakino-player {
+            background: #000;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .uakino-loading {
+            color: #fff;
+            font-size: 1.2rem;
+            text-align: center;
+        }
+
+        .uakino-error {
+            color: #ff6b6b;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .uakino-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
     </style>
 </head>
 <body>
@@ -552,17 +636,22 @@
             <div style="text-align: center;">
                 <div style="font-size: 0.8rem; color: #888; margin-bottom: 5px;">Код кімнати:</div>
                 <div class="code-display" id="roomCodeDisplay">------</div>
-                <div style="margin-top: 10px;">
+                <div style="margin-top: 10px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
                     <button class="btn-secondary" onclick="copyCode()">📋 Копіювати</button>
-                    <button class="btn-secondary" onclick="toggleQR()">📱 QR</button>
+                    
+                    <!-- QR Dropdown -->
+                    <div class="qr-dropdown">
+                        <button class="btn-secondary" onclick="toggleQR()">📱 QR</button>
+                        <div id="qrDropdown" class="qr-dropdown-content">
+                            <button class="qr-close" onclick="toggleQR()">×</button>
+                            <div id="qrcode"></div>
+                            <p>Скануйте для приєднання</p>
+                        </div>
+                    </div>
+                    
                     <button class="btn-danger" onclick="leaveRoom()">🚪 Вийти</button>
                 </div>
             </div>
-        </div>
-
-        <div id="qrContainer" style="display: none; text-align: center; margin-bottom: 20px; background: white; padding: 20px; border-radius: 15px; display: inline-block;">
-            <div id="qrcode"></div>
-            <p style="color: #333; margin-top: 10px; font-size: 0.9rem;">Скануйте для приєднання</p>
         </div>
 
         <div class="room-layout">
@@ -589,7 +678,8 @@
                     </div>
 
                     <div class="info-box" id="uakinoInfo" style="display: none;">
-                        🎥 <strong>UAKino:</strong> Вставте посилання на фільм/серіал з uakino.best — ми автоматично знайдемо плеєр!
+                        🎥 <strong>UAKino:</strong> Вставте посилання на фільм/серіал з uakino.best — ми автоматично знайдемо плеєр!<br>
+                        <small>Працює через проксі-сервер для обходу CORS</small>
                     </div>
 
                     <div class="info-box" id="streamInfo" style="display: none;">
@@ -696,6 +786,14 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
+        // CORS Proxy list for UAKino
+        const CORS_PROXIES = [
+            'https://api.allorigins.win/raw?url=',
+            'https://corsproxy.io/?',
+            'https://api.codetabs.com/v1/proxy?quest=',
+            'https://thingproxy.freeboard.io/fetch/'
+        ];
+
         // Cute nicknames
         const cuteAdjectives = ['Милий','Солодкий','Пухнастий','Яскравий','Веселий','Сонячний','Місячний','Зоряний','Радісний','Щасливий','Лагідний','Добрий','Хоробрий','Розумний','Швидкий','Смішний','Мудрий','Маленький','Великий','Синій','Рожевий','Зелений','Фіолетовий'];
         const cuteNouns = ['Їжачок','Котик','Песик','Зайчик','Ведмедик','Пандочка','Лисичка','Вовчик','Тигрик','Левчик','Слоник','Жирафчик','Пінгвінчик','Коала','Капібара','Носоріжок','Бегемотик','Мавпочка','Папуга','Совеня','Олень','Лелека','Дельфін','Кит'];
@@ -729,19 +827,10 @@
             document.getElementById('roomPage').style.display = 'block';
             document.getElementById('roomCodeDisplay').textContent = currentRoom;
             
-            // Show my profile
             document.getElementById('myProfile').style.display = 'flex';
             document.getElementById('myProfileName').textContent = userName;
             
-            setTimeout(() => {
-                const qrContainer = document.getElementById('qrcode');
-                qrContainer.innerHTML = '';
-                new QRCode(qrContainer, {
-                    text: `${window.location.origin}${window.location.pathname}?room=${currentRoom}`,
-                    width: 150, height: 150
-                });
-            }, 100);
-            
+            generateQR();
             initRoom();
             showNotification(`✅ Кімнату створено! Ви — ${userName}`);
         }
@@ -774,22 +863,41 @@
             document.getElementById('roomPage').style.display = 'block';
             document.getElementById('roomCodeDisplay').textContent = currentRoom;
             
-            // Show my profile
             document.getElementById('myProfile').style.display = 'flex';
             document.getElementById('myProfileName').textContent = userName;
             
-            setTimeout(() => {
-                const qrContainer = document.getElementById('qrcode');
-                qrContainer.innerHTML = '';
-                new QRCode(qrContainer, {
-                    text: `${window.location.origin}${window.location.pathname}?room=${currentRoom}`,
-                    width: 150, height: 150
-                });
-            }, 100);
-            
+            generateQR();
             initRoom();
             showNotification(`🎉 Ви приєдналися! Ви — ${userName}`);
         }
+
+        function generateQR() {
+            const qrContainer = document.getElementById('qrcode');
+            qrContainer.innerHTML = '';
+            new QRCode(qrContainer, {
+                text: `${window.location.origin}${window.location.pathname}?room=${currentRoom}`,
+                width: 150,
+                height: 150,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+
+        function toggleQR() {
+            const dropdown = document.getElementById('qrDropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        // Close QR when clicking outside
+        document.addEventListener('click', function(event) {
+            const qrDropdown = document.getElementById('qrDropdown');
+            const qrButton = event.target.closest('.qr-dropdown');
+            
+            if (!qrButton && qrDropdown.classList.contains('show')) {
+                qrDropdown.classList.remove('show');
+            }
+        });
 
         function changeName() {
             const newName = prompt('Введіть нове ім\'я:', userName);
@@ -824,7 +932,6 @@
             console.log('🔧 Ініціалізація кімнати:', currentRoom);
             roomRef = database.ref('rooms/' + currentRoom);
             
-            // Add user
             const userRef = roomRef.child('users/' + userId);
             userRef.set({
                 name: userName,
@@ -835,7 +942,6 @@
             
             userRef.onDisconnect().remove();
             
-            // Update lastSeen every 5 seconds
             setInterval(() => {
                 userRef.update({ lastSeen: firebase.database.ServerValue.TIMESTAMP });
             }, 5000);
@@ -846,12 +952,10 @@
         function listenToRoom() {
             console.log('👂 Слухаємо кімнату...');
             
-            // Remove old listeners if exist
             if (usersListener) roomRef.child('users').off('value', usersListener);
             if (videoListener) roomRef.child('video').off('value', videoListener);
             if (chatListener) roomRef.child('chat').off('child_added', chatListener);
             
-            // Listen users - with debounce to prevent flickering
             let updateTimeout;
             usersListener = roomRef.child('users').on('value', (snapshot) => {
                 clearTimeout(updateTimeout);
@@ -862,7 +966,6 @@
                 }, 100);
             });
             
-            // Listen video
             videoListener = roomRef.child('video').on('value', (snapshot) => {
                 const videoState = snapshot.val();
                 console.log('📹 Відео оновлення:', videoState);
@@ -871,7 +974,6 @@
                 }
             });
             
-            // Listen chat
             chatListener = roomRef.child('chat').limitToLast(50).on('child_added', (snapshot) => {
                 const msg = snapshot.val();
                 if (msg && msg.userId !== userId) {
@@ -884,7 +986,6 @@
             const list = document.getElementById('userList');
             const currentHtml = list.innerHTML;
             
-            // Build new HTML
             let newHtml = '';
             let count = 0;
             
@@ -897,7 +998,6 @@
                 newHtml += `<div class="${className}" onclick="mentionUser('${user.name}')">${isHostBadge} ${user.name}</div>`;
             });
             
-            // Only update if changed (prevents flickering)
             if (currentHtml !== newHtml) {
                 list.innerHTML = newHtml;
                 document.getElementById('userCount').textContent = count;
@@ -909,21 +1009,18 @@
             document.querySelectorAll('.btn-type').forEach(btn => btn.classList.remove('active'));
             document.getElementById('btn-' + type).classList.add('active');
             
-            // Hide all info boxes
             document.getElementById('html5Info').style.display = 'none';
             document.getElementById('youtubeWarning').style.display = 'none';
             document.getElementById('iframeWarning').style.display = 'none';
             document.getElementById('uakinoInfo').style.display = 'none';
             document.getElementById('streamInfo').style.display = 'none';
             
-            // Show relevant
             if (type === 'html5') document.getElementById('html5Info').style.display = 'block';
             else if (type === 'youtube') document.getElementById('youtubeWarning').style.display = 'block';
             else if (type === 'iframe') document.getElementById('iframeWarning').style.display = 'block';
             else if (type === 'uakino') document.getElementById('uakinoInfo').style.display = 'block';
             else if (type === 'stream') document.getElementById('streamInfo').style.display = 'block';
             
-            // Update controls
             document.getElementById('videoControls').style.display = 'none';
             document.getElementById('streamControls').style.display = 'none';
             document.getElementById('limitedControls').style.display = 'none';
@@ -942,25 +1039,78 @@
             }
         }
 
-        // UAKino parser
+        // Enhanced UAKino parser with multiple proxy attempts
         async function parseUakino(url) {
             console.log('🔍 Парсинг UAKino:', url);
             
-            // Extract ID from URL
+            // Extract film ID from URL
             const match = url.match(/uakino\.best\/.*\/(\d+)-/);
             if (!match) {
-                throw new Error('Невірне посилання UAKino');
+                throw new Error('Невірне посилання UAKino. Очікується формат: uakino.best/.../1234-film-name');
             }
             
             const filmId = match[1];
             console.log('🎬 ID фільму:', filmId);
             
-            // Try to get player URL (this is simplified - real implementation needs backend proxy)
-            // Since we can't bypass CORS from frontend, we'll use iframe approach
+            // Try to fetch page through proxies
+            let pageHtml = null;
+            let usedProxy = null;
+            
+            for (const proxy of CORS_PROXIES) {
+                try {
+                    console.log('🌐 Спроба через проксі:', proxy);
+                    const response = await fetch(proxy + encodeURIComponent(url), {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        pageHtml = await response.text();
+                        usedProxy = proxy;
+                        console.log('✅ Успішно отримано через:', proxy);
+                        break;
+                    }
+                } catch (e) {
+                    console.log('❌ Проксі не спрацював:', proxy, e.message);
+                    continue;
+                }
+            }
+            
+            if (!pageHtml) {
+                throw new Error('Не вдалося отримати сторінку. Всі CORS проксі недоступні.');
+            }
+            
+            // Parse player URL from page
+            const playerMatch = pageHtml.match(/data-src="([^"]*\/player\/[^"]*)"/i) || 
+                               pageHtml.match(/src="([^"]*\/player\/[^"]*)"/i) ||
+                               pageHtml.match(/player\.php\?id=(\d+)/i);
+            
+            let playerUrl = null;
+            
+            if (playerMatch) {
+                if (playerMatch[1].includes('http')) {
+                    playerUrl = playerMatch[1];
+                } else {
+                    // Relative URL
+                    playerUrl = 'https://uakino.best' + (playerMatch[1].startsWith('/') ? '' : '/') + playerMatch[1];
+                }
+            }
+            
+            // Alternative: try to construct player URL directly
+            if (!playerUrl) {
+                playerUrl = `https://uakino.best/player/${filmId}`;
+            }
+            
+            console.log('🎥 URL плеєра:', playerUrl);
+            
             return {
                 type: 'uakino',
                 url: url,
-                filmId: filmId
+                filmId: filmId,
+                playerUrl: playerUrl,
+                proxy: usedProxy
             };
         }
 
@@ -989,6 +1139,15 @@
             } catch (err) {
                 console.error('❌ Помилка:', err);
                 showNotification('❌ ' + err.message, 'error');
+                
+                // If UAKino fails, offer alternative
+                if (videoType === 'uakino') {
+                    setTimeout(() => {
+                        if (confirm('Автоматичний парсинг не вдався. Спробувати відкрити через iframe (може не працювати)?')) {
+                            loadIframe(url);
+                        }
+                    }, 1000);
+                }
             }
         }
 
@@ -996,21 +1155,50 @@
             console.log('🎥 Завантаження UAKino:', data);
             
             const container = document.getElementById('videoPlayer');
-            // Use iframe with uakino URL - the site will handle the player
-            container.innerHTML = `<iframe src="${data.url}" width="100%" height="100%" frameborder="0" allowfullscreen sandbox="allow-same-origin allow-scripts allow-presentation"></iframe>`;
             
-            updateSyncStatus('UAKino (синхронізація обмежена)', 'warning');
+            // Create loading state
+            container.innerHTML = `
+                <div class="uakino-player" id="uakinoLoading">
+                    <div class="uakino-loading">
+                        <div style="font-size: 3rem; margin-bottom: 20px;">🎬</div>
+                        <div>Завантаження UAKino...</div>
+                        <div style="font-size: 0.8rem; color: #888; margin-top: 10px;">ID: ${data.filmId}</div>
+                    </div>
+                </div>
+            `;
+            
+            updateSyncStatus('UAKino: завантаження...', 'warning');
+            
+            // Try to load player through proxy
+            const proxyUrl = data.proxy ? data.proxy + encodeURIComponent(data.playerUrl) : data.playerUrl;
+            
+            // Create iframe with UAKino player
+            setTimeout(() => {
+                container.innerHTML = `
+                    <iframe 
+                        src="${proxyUrl}" 
+                        class="uakino-iframe" 
+                        allowfullscreen 
+                        sandbox="allow-same-origin allow-scripts allow-presentation allow-forms"
+                        onload="document.getElementById('uakinoStatus').textContent='✅ Плеєр завантажено'"
+                        onerror="document.getElementById('uakinoStatus').textContent='❌ Помилка завантаження'"
+                    ></iframe>
+                `;
+            }, 500);
             
             // Save to Firebase
             roomRef.child('video').set({
                 type: 'uakino',
                 url: data.url,
                 filmId: data.filmId,
+                playerUrl: data.playerUrl,
+                proxy: data.proxy,
                 updatedBy: userId,
                 updatedAt: firebase.database.ServerValue.TIMESTAMP
             });
             
-            addSystemMessage(`${userName} відкрив UAKino 🎥`);
+            updateSyncStatus('UAKino (синхронізація обмежена)', 'warning');
+            addSystemMessage(`${userName} відкрив UAKino 🎥 (ID: ${data.filmId})`);
             showNotification('🎬 UAKino завантажено!');
         }
 
@@ -1102,7 +1290,6 @@
             addSystemMessage(`${userName} очистив відео 🗑️`);
         }
 
-        // Screen sharing (stream)
         async function startScreenShare() {
             if (!isHost) {
                 showNotification('❌ Тільки хост може стримити', 'error');
@@ -1183,11 +1370,22 @@
                 }
                 updateSyncStatus('YouTube від хоста', 'warning');
                 
-            } else if (state.type === 'uakino' && state.url) {
-                if (!container.querySelector('iframe')?.src.includes('uakino')) {
-                    container.innerHTML = `<iframe src="${state.url}" width="100%" height="100%" frameborder="0" allowfullscreen sandbox="allow-same-origin allow-scripts allow-presentation"></iframe>`;
+            } else if (state.type === 'uakino' && state.playerUrl) {
+                // Reconstruct proxy URL for viewers
+                const proxyUrl = state.proxy ? state.proxy + encodeURIComponent(state.playerUrl) : state.playerUrl;
+                
+                if (!container.querySelector('iframe')?.src.includes('uakino') && 
+                    !container.querySelector('iframe')?.src.includes(state.filmId)) {
+                    container.innerHTML = `
+                        <iframe 
+                            src="${proxyUrl}" 
+                            class="uakino-iframe" 
+                            allowfullscreen 
+                            sandbox="allow-same-origin allow-scripts allow-presentation allow-forms"
+                        ></iframe>
+                    `;
                 }
-                updateSyncStatus('UAKino від хоста', 'warning');
+                updateSyncStatus(`UAKino від хоста (ID: ${state.filmId})`, 'warning');
                 
             } else if (state.type === 'iframe' && state.url) {
                 if (container.querySelector('iframe')?.src !== state.url) {
@@ -1322,11 +1520,6 @@
             indicator.className = 'sync-indicator' + (type === 'error' ? ' offline' : '');
         }
 
-        // Chat functions
-        function toggleChat() {
-            document.getElementById('chatSection').classList.toggle('open');
-        }
-
         function addEmoji(emoji) {
             const input = document.getElementById('chatInput');
             input.value += emoji;
@@ -1385,12 +1578,7 @@
 
         function copyCode() {
             navigator.clipboard.writeText(currentRoom);
-            showNotification('📋 Код: ' + currentRoom);
-        }
-
-        function toggleQR() {
-            const qr = document.getElementById('qrContainer');
-            qr.style.display = qr.style.display === 'none' ? 'block' : 'none';
+            showNotification('📋 Код скопійовано: ' + currentRoom);
         }
 
         function showNotification(text, type = 'success') {

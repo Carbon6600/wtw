@@ -91,6 +91,22 @@
             cursor: not-allowed;
         }
         
+        .btn-type {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid rgba(255,255,255,0.2);
+            padding: 10px 20px;
+            color: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+        
+        .btn-type.active {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            border-color: transparent;
+        }
+        
         .room {
             display: none;
             animation: slideUp 0.5s ease;
@@ -128,6 +144,14 @@
             padding: 20px;
             margin-bottom: 20px;
             border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .video-type-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
         }
         
         .url-input-group {
@@ -270,6 +294,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
+            animation: popIn 0.3s ease;
         }
         
         .user-badge.host {
@@ -280,11 +305,16 @@
             border: 2px solid #4ecdc4;
         }
         
+        @keyframes popIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        
         .chat-section {
             position: fixed;
             bottom: 20px;
             right: 20px;
-            width: 380px;
+            width: 400px;
             max-height: 500px;
             background: rgba(20, 20, 40, 0.98);
             border-radius: 20px;
@@ -326,16 +356,11 @@
             border-radius: 12px;
             font-size: 0.95rem;
             animation: popIn 0.3s ease;
-        }
-        
-        @keyframes popIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            word-wrap: break-word;
         }
         
         .message .author {
             font-weight: 600;
-            color: #4ecdc4;
             margin-bottom: 5px;
             font-size: 0.85rem;
         }
@@ -349,10 +374,42 @@
             color: #ffc107;
         }
         
+        .emoji-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            padding: 8px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            margin: 2px;
+            transition: transform 0.2s;
+        }
+        
+        .emoji-btn:hover {
+            transform: scale(1.2);
+            background: rgba(255,255,255,0.2);
+        }
+        
+        .emoji-panel {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+            margin-bottom: 10px;
+            justify-content: center;
+        }
+        
         .chat-input-group {
             display: flex;
             padding: 15px;
             border-top: 1px solid rgba(255,255,255,0.1);
+            flex-direction: column;
+        }
+        
+        .chat-input-row {
+            display: flex;
+            gap: 10px;
         }
         
         .chat-input {
@@ -362,7 +419,6 @@
             padding: 12px 15px;
             border-radius: 25px;
             color: white;
-            margin-right: 10px;
             font-size: 0.95rem;
         }
         
@@ -414,6 +470,16 @@
             color: #ffc107;
         }
         
+        .info-box {
+            background: rgba(78, 205, 196, 0.1);
+            border: 1px solid rgba(78, 205, 196, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            color: #4ecdc4;
+        }
+        
         @media (max-width: 768px) {
             .hero h1 { font-size: 2.5rem; }
             .room-header { flex-direction: column; text-align: center; }
@@ -451,7 +517,7 @@
         <div class="join-form">
             <h2 style="margin-bottom: 30px;">🔑 Приєднатися до кімнати</h2>
             <input type="text" id="joinCode" placeholder="КОД КІМНАТИ" maxlength="6" style="width: 100%; padding: 20px; margin-bottom: 15px; border-radius: 10px; border: 2px solid rgba(78, 205, 196, 0.3); background: rgba(0,0,0,0.3); color: #4ecdc4; font-size: 1.5rem; text-align: center; letter-spacing: 5px; font-weight: bold; text-transform: uppercase;">
-            <input type="text" id="userNameJoin" placeholder="Ваше ім'я" style="width: 100%; padding: 15px; margin-bottom: 20px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white; font-size: 1.1rem;">
+            <input type="text" id="userNameJoin" placeholder="Ваше ім'я (або залиште порожнім для милої нікнейму)" style="width: 100%; padding: 15px; margin-bottom: 20px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white; font-size: 1.1rem;">
             <button class="btn-primary" onclick="joinRoom()" style="width: 100%; margin: 0;">🚀 Увійти</button>
             <button class="btn-secondary" onclick="showHome()" style="margin-top: 15px;">← Назад</button>
         </div>
@@ -483,14 +549,26 @@
         </div>
 
         <div class="video-section">
+            <div class="video-type-selector">
+                <button class="btn-type active" onclick="setVideoType('html5')" id="btn-html5">🎬 MP4/Відео</button>
+                <button class="btn-type" onclick="setVideoType('youtube')" id="btn-youtube">📺 YouTube</button>
+                <button class="btn-type" onclick="setVideoType('iframe')" id="btn-iframe">🌐 Будь-який сайт</button>
+            </div>
+
+            <div class="info-box" id="html5Info">
+                💡 <strong>Рекомендовано:</strong> Прямі посилання на MP4, WebM, M3U8 файли. Повна синхронізація!
+            </div>
+
             <div class="warning-box" id="youtubeWarning" style="display: none;">
-                ⚠️ <strong>YouTube обмежує синхронізацію.</strong> 
-                Рекомендуємо використовувати прямі MP4-посилання для повної синхронізації.
-                Або натисніть "Play" одночасно вручну.
+                ⚠️ <strong>YouTube:</strong> Обмежена синхронізація через політику Google. Рекомендуємо натиснути Play одночасно.
+            </div>
+
+            <div class="warning-box" id="iframeWarning" style="display: none;">
+                🌐 <strong>IFrame режим:</strong> Вбудовуємо будь-який сайт. Синхронізація обмежена або неможлива через захист сайтів (uakino, fex.net тощо). Використовуйте для сайтів без захисту.
             </div>
 
             <div class="url-input-group">
-                <input type="text" class="url-input" id="videoUrl" placeholder="Вставте посилання (MP4, WebM, M3U8 або YouTube)...">
+                <input type="text" class="url-input" id="videoUrl" placeholder="Вставте посилання на відео...">
                 <button class="btn-primary" onclick="loadVideo()">▶ Завантажити</button>
             </div>
             
@@ -516,10 +594,9 @@
                 <button class="btn-secondary" onclick="syncRequest()" style="background: rgba(78, 205, 196, 0.2); border-color: #4ecdc4;">🔄 Синхронізувати</button>
             </div>
 
-            <div class="controls" id="youtubeControls" style="display: none;">
-                <div class="warning-box" style="margin: 0;">
-                    📺 <strong>YouTube режим:</strong> Використовуйте плеєр всередині відео. 
-                    <br>Натисніть ⏯ Play одночасно для синхронізації.
+            <div class="controls" id="limitedControls" style="display: none;">
+                <div class="warning-box" style="margin: 0; text-align: center;">
+                    📺 <strong>Обмежений режим:</strong> Керування недоступне. Натисніть Play у плеєрі вище.
                 </div>
             </div>
         </div>
@@ -537,9 +614,31 @@
             <span id="chatToggle">↑</span>
         </div>
         <div class="chat-messages" id="chatMessages"></div>
+        
+        <div class="emoji-panel">
+            <button class="emoji-btn" onclick="addEmoji('😀')">😀</button>
+            <button class="emoji-btn" onclick="addEmoji('😂')">😂</button>
+            <button class="emoji-btn" onclick="addEmoji('🥰')">🥰</button>
+            <button class="emoji-btn" onclick="addEmoji('😎')">😎</button>
+            <button class="emoji-btn" onclick="addEmoji('🤔')">🤔</button>
+            <button class="emoji-btn" onclick="addEmoji('😱')">😱</button>
+            <button class="emoji-btn" onclick="addEmoji('😴')">😴</button>
+            <button class="emoji-btn" onclick="addEmoji('🥳')">🥳</button>
+            <button class="emoji-btn" onclick="addEmoji('😭')">😭</button>
+            <button class="emoji-btn" onclick="addEmoji('❤️')">❤️</button>
+            <button class="emoji-btn" onclick="addEmoji('👍')">👍</button>
+            <button class="emoji-btn" onclick="addEmoji('👎')">👎</button>
+            <button class="emoji-btn" onclick="addEmoji('🔥')">🔥</button>
+            <button class="emoji-btn" onclick="addEmoji('🎉')">🎉</button>
+            <button class="emoji-btn" onclick="addEmoji('🍿')">🍿</button>
+            <button class="emoji-btn" onclick="addEmoji('🎬')">🎬</button>
+        </div>
+        
         <div class="chat-input-group">
-            <input type="text" class="chat-input" id="chatInput" placeholder="Написати повідомлення..." onkeypress="handleChatKey(event)">
-            <button class="btn-secondary" onclick="sendMessage()">➤</button>
+            <div class="chat-input-row">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Написати повідомлення..." onkeypress="handleChatKey(event)">
+                <button class="btn-secondary" onclick="sendMessage()">➤</button>
+            </div>
         </div>
     </div>
 
@@ -560,9 +659,33 @@
             appId: "1:994652416180:web:e12eff40f22b273288cfe1"
         };
 
-        // Ініціалізація
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+
+        // 🎲 МИЛІ НІКНЕЙМИ
+        const cuteAdjectives = [
+            'Милий', 'Солодкий', 'Пухнастий', 'Яскравий', 'Веселий', 'Сонячний', 
+            'Місячний', 'Зоряний', 'Радісний', 'Щасливий', 'Лагідний', 'Добрий',
+            'Хоробрий', 'Розумний', 'Швидкий', 'Повільний', 'Смішний', 'Мудрий',
+            'Маленький', 'Великий', 'Синій', 'Рожевий', 'Зелений', 'Фіолетовий'
+        ];
+        
+        const cuteNouns = [
+            'Їжачок', 'Котик', 'Песик', 'Зайчик', 'Ведмедик', 'Пандочка', 
+            'Лисичка', 'Вовчик', 'Тигрик', 'Левчик', 'Слоник', 'Жирафчик',
+            'Пінгвінчик', 'Коала', 'Капібара', 'Носоріжок', 'Бегемотик', 'Мавпочка',
+            'Папуга', 'Совеня', 'Олень', 'Лелека', 'Дельфін', 'Кит', 'Тюлень'
+        ];
+        
+        const cuteSuffixes = ['🦔', '🐱', '🐶', '🐰', '🐻', '🐼', '🦊', '🐺', '🐯', '🦁', '🐘', '🦒', '🐧', '🐨', '🦫', '🦏', '🦛', '🐒', '🦜', '🦉', '🦌', '🐦', '🐬', '🐋', '🦭'];
+
+        function generateCuteNickname() {
+            const adj = cuteAdjectives[Math.floor(Math.random() * cuteAdjectives.length)];
+            const noun = cuteNouns[Math.floor(Math.random() * cuteNouns.length)];
+            const suffix = cuteSuffixes[cuteNouns.indexOf(noun)] || '✨';
+            const num = Math.floor(Math.random() * 99) + 1;
+            return `${adj}${noun}${num} ${suffix}`;
+        }
 
         // Глобальні змінні
         let currentRoom = null;
@@ -571,10 +694,9 @@
         let isHost = false;
         let roomRef = null;
         let player = null;
-        let isYouTube = false;
+        let videoType = 'html5';
         let isSyncing = false;
         let lastSyncTime = 0;
-        let checkInterval = null;
 
         function generateId() {
             return Math.random().toString(36).substr(2, 9);
@@ -587,7 +709,7 @@
         function createRoom() {
             currentRoom = generateRoomCode();
             userId = generateId();
-            userName = 'Host-' + Math.floor(Math.random() * 1000);
+            userName = generateCuteNickname();
             isHost = true;
             
             document.getElementById('homePage').style.display = 'none';
@@ -605,7 +727,7 @@
             }, 100);
             
             initRoom();
-            showNotification('✅ Кімнату створено!');
+            showNotification(`✅ Кімнату створено! Ви — ${userName}`);
         }
 
         function showJoin() {
@@ -620,7 +742,7 @@
 
         function joinRoom() {
             const code = document.getElementById('joinCode').value.toUpperCase().trim();
-            const name = document.getElementById('userNameJoin').value.trim();
+            const nameInput = document.getElementById('userNameJoin').value.trim();
             
             if (code.length !== 6) {
                 showNotification('❌ Введіть коректний код (6 символів)', 'error');
@@ -629,7 +751,8 @@
             
             currentRoom = code;
             userId = generateId();
-            userName = name || 'Гість-' + Math.floor(Math.random() * 1000);
+            // Якщо ім'я не введено — генеруємо милий нікнейм
+            userName = nameInput || generateCuteNickname();
             isHost = false;
             
             document.getElementById('joinPage').style.display = 'none';
@@ -647,7 +770,7 @@
             }, 100);
             
             initRoom();
-            showNotification('🎉 Ви приєдналися до кімнати!');
+            showNotification(`🎉 Ви приєдналися! Ви — ${userName}`);
         }
 
         function initRoom() {
@@ -702,29 +825,49 @@
                 badge.className = 'user-badge';
                 if (user.isHost) badge.classList.add('host');
                 if (uid === userId) badge.classList.add('me');
-                badge.innerHTML = `${user.isHost ? '👑' : '👤'} ${user.name} ${uid === userId ? '(Ви)' : ''}`;
+                badge.innerHTML = `${user.isHost ? '👑' : '👤'} ${user.name}`;
                 list.appendChild(badge);
             });
             
             document.getElementById('userCount').textContent = count;
         }
 
+        function setVideoType(type) {
+            videoType = type;
+            document.querySelectorAll('.btn-type').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('btn-' + type).classList.add('active');
+            
+            // Показати/сховати інформацію
+            document.getElementById('html5Info').style.display = type === 'html5' ? 'block' : 'none';
+            document.getElementById('youtubeWarning').style.display = type === 'youtube' ? 'block' : 'none';
+            document.getElementById('iframeWarning').style.display = type === 'iframe' ? 'block' : 'none';
+            
+            // Оновити placeholder
+            const input = document.getElementById('videoUrl');
+            if (type === 'html5') {
+                input.placeholder = 'Вставте пряме посилання на MP4, WebM, M3U8...';
+            } else if (type === 'youtube') {
+                input.placeholder = 'Вставте посилання YouTube...';
+            } else {
+                input.placeholder = 'Вставте будь-яке посилання на сайт...';
+            }
+        }
+
         function loadVideo() {
             const url = document.getElementById('videoUrl').value.trim();
             if (!url) return;
             
-            // Визначаємо тип
-            if (url.includes('youtube.com') || url.includes('youtu.be')) {
+            if (videoType === 'youtube') {
                 loadYouTube(url);
+            } else if (videoType === 'iframe') {
+                loadIframe(url);
             } else {
                 loadHTML5(url);
             }
         }
 
         function loadYouTube(url) {
-            isYouTube = true;
             let videoId = '';
-            
             if (url.includes('v=')) {
                 videoId = url.split('v=')[1].split('&')[0];
             } else if (url.includes('youtu.be/')) {
@@ -736,25 +879,22 @@
                 return;
             }
             
-            document.getElementById('youtubeWarning').style.display = 'block';
             document.getElementById('videoControls').style.display = 'none';
-            document.getElementById('youtubeControls').style.display = 'flex';
+            document.getElementById('limitedControls').style.display = 'flex';
             
             const container = document.getElementById('videoPlayer');
             container.innerHTML = `
                 <iframe 
                     width="100%" 
                     height="100%" 
-                    src="https://www.youtube.com/embed/${videoId}?enablejsapi=1&origin=${window.location.origin}" 
+                    src="https://www.youtube.com/embed/${videoId}?enablejsapi=1" 
                     frameborder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                     allowfullscreen>
                 </iframe>
             `;
             
             updateSyncStatus('YouTube (обмежена синхронізація)', 'warning');
             
-            // Зберігаємо в Firebase
             roomRef.child('video').set({
                 type: 'youtube',
                 videoId: videoId,
@@ -763,14 +903,40 @@
                 updatedAt: firebase.database.ServerValue.TIMESTAMP
             });
             
-            addSystemMessage(`${userName} завантажив YouTube відео`);
+            addSystemMessage(`${userName} завантажив YouTube відео 🎬`);
+        }
+
+        function loadIframe(url) {
+            document.getElementById('videoControls').style.display = 'none';
+            document.getElementById('limitedControls').style.display = 'flex';
+            
+            const container = document.getElementById('videoPlayer');
+            container.innerHTML = `
+                <iframe 
+                    src="${url}" 
+                    width="100%" 
+                    height="100%" 
+                    frameborder="0" 
+                    allowfullscreen
+                    sandbox="allow-same-origin allow-scripts allow-presentation allow-forms"
+                ></iframe>
+            `;
+            
+            updateSyncStatus('IFrame режим (синхронізація обмежена)', 'warning');
+            
+            roomRef.child('video').set({
+                type: 'iframe',
+                url: url,
+                updatedBy: userId,
+                updatedAt: firebase.database.ServerValue.TIMESTAMP
+            });
+            
+            addSystemMessage(`${userName} відкрив сайт у кімнаті 🌐`);
         }
 
         function loadHTML5(url) {
-            isYouTube = false;
-            document.getElementById('youtubeWarning').style.display = 'none';
             document.getElementById('videoControls').style.display = 'flex';
-            document.getElementById('youtubeControls').style.display = 'none';
+            document.getElementById('limitedControls').style.display = 'none';
             
             const container = document.getElementById('videoPlayer');
             container.innerHTML = `<video id="html5Video" controls style="width:100%; height:100%;"></video>`;
@@ -779,18 +945,12 @@
             player.src = url;
             
             player.oncanplay = () => {
-                updateSyncStatus('Відео готове', 'success');
+                updateSyncStatus('Відео готове ✅', 'success');
                 updateTimeDisplay();
             };
             
-            player.onplay = () => {
-                if (!isSyncing) broadcastState();
-            };
-            
-            player.onpause = () => {
-                if (!isSyncing) broadcastState();
-            };
-            
+            player.onplay = () => { if (!isSyncing) broadcastState(); };
+            player.onpause = () => { if (!isSyncing) broadcastState(); };
             player.ontimeupdate = () => {
                 updateTimeDisplay();
                 const now = Date.now();
@@ -800,7 +960,6 @@
                 }
             };
             
-            // Зберігаємо в Firebase
             roomRef.child('video').set({
                 type: 'html5',
                 url: url,
@@ -810,40 +969,52 @@
                 updatedAt: firebase.database.ServerValue.TIMESTAMP
             });
             
-            addSystemMessage(`${userName} завантажив відео`);
+            addSystemMessage(`${userName} завантажив відео 🎥`);
         }
 
         function syncVideoState(state) {
             if (state.type === 'youtube') {
-                // Для YouTube просто завантажуємо, синхронізація обмежена
-                if (isYouTube && state.videoId) {
-                    const iframe = document.querySelector('#videoPlayer iframe');
-                    if (iframe && !iframe.src.includes(state.videoId)) {
-                        document.getElementById('videoPlayer').innerHTML = `
+                if (state.videoId) {
+                    const container = document.getElementById('videoPlayer');
+                    const iframe = container.querySelector('iframe');
+                    if (!iframe || !iframe.src.includes(state.videoId)) {
+                        container.innerHTML = `
                             <iframe 
                                 width="100%" 
                                 height="100%" 
-                                src="https://www.youtube.com/embed/${state.videoId}?enablejsapi=1&origin=${window.location.origin}" 
+                                src="https://www.youtube.com/embed/${state.videoId}?enablejsapi=1" 
                                 frameborder="0" 
                                 allowfullscreen>
                             </iframe>
                         `;
                     }
                 }
+            } else if (state.type === 'iframe') {
+                const container = document.getElementById('videoPlayer');
+                const iframe = container.querySelector('iframe');
+                if (!iframe || iframe.src !== state.url) {
+                    container.innerHTML = `
+                        <iframe 
+                            src="${state.url}" 
+                            width="100%" 
+                            height="100%" 
+                            frameborder="0" 
+                            allowfullscreen
+                            sandbox="allow-same-origin allow-scripts allow-presentation allow-forms"
+                        ></iframe>
+                    `;
+                }
             } else if (state.type === 'html5' && player) {
                 isSyncing = true;
                 
-                // Оновлюємо URL якщо змінився
                 if (player.src !== state.url && state.url) {
                     player.src = state.url;
                 }
                 
-                // Синхронізуємо час
                 if (Math.abs(player.currentTime - state.currentTime) > 2) {
                     player.currentTime = state.currentTime;
                 }
                 
-                // Синхронізуємо play/pause
                 if (state.isPlaying && player.paused) {
                     player.play().catch(e => console.log('Autoplay blocked'));
                     updateSyncStatus('▶ Відтворення', 'success');
@@ -857,7 +1028,7 @@
         }
 
         function broadcastState() {
-            if (!roomRef || isYouTube) return;
+            if (!roomRef || videoType !== 'html5') return;
             
             roomRef.child('video').update({
                 currentTime: player.currentTime,
@@ -868,8 +1039,8 @@
         }
 
         function videoAction(action) {
-            if (isYouTube || !player) {
-                showNotification('⚠️ Керування недоступне для YouTube', 'error');
+            if (videoType !== 'html5' || !player) {
+                showNotification('⚠️ Керування тільки для MP4 відео', 'error');
                 return;
             }
             
@@ -885,8 +1056,8 @@
         }
 
         function seek(seconds) {
-            if (isYouTube || !player) {
-                showNotification('⚠️ Перемотка недоступна для YouTube', 'error');
+            if (videoType !== 'html5' || !player) {
+                showNotification('⚠️ Перемотка тільки для MP4 відео', 'error');
                 return;
             }
             
@@ -896,7 +1067,7 @@
         }
 
         function manualSeek(value) {
-            if (isYouTube || !player) return;
+            if (videoType !== 'html5' || !player) return;
             
             const time = (value / 1000) * player.duration;
             player.currentTime = time;
@@ -904,18 +1075,18 @@
         }
 
         function syncRequest() {
-            if (isYouTube) {
-                showNotification('📺 Для YouTube: натисніть Play одночасно вручну');
+            if (videoType !== 'html5') {
+                showNotification('📺 Для цього режиму натисніть Play одночасно вручну');
                 return;
             }
             
             broadcastState();
             showNotification('🔄 Синхронізація надіслана!');
-            addSystemMessage(`${userName} синхронізував відео`);
+            addSystemMessage(`${userName} синхронізував відео 🔄`);
         }
 
         function updateTimeDisplay() {
-            if (!player || isYouTube) return;
+            if (!player || videoType !== 'html5') return;
             
             const current = formatTime(player.currentTime || 0);
             const total = formatTime(player.duration || 0);
@@ -940,10 +1111,17 @@
             indicator.className = 'sync-indicator' + (type === 'error' ? ' offline' : '');
         }
 
+        // Чат з емодзі
         function toggleChat() {
             document.getElementById('chatSection').classList.toggle('open');
             document.getElementById('chatToggle').textContent = 
                 document.getElementById('chatSection').classList.contains('open') ? '↓' : '↑';
+        }
+
+        function addEmoji(emoji) {
+            const input = document.getElementById('chatInput');
+            input.value += emoji;
+            input.focus();
         }
 
         function handleChatKey(e) {
@@ -972,7 +1150,16 @@
             const container = document.getElementById('chatMessages');
             const div = document.createElement('div');
             div.className = 'message';
-            div.innerHTML = `<div class="author">${escapeHtml(msg.userName)}</div><div>${escapeHtml(msg.text)}</div>`;
+            
+            // Визначаємо колір для автора
+            let authorColor = '#4ecdc4';
+            if (msg.userId === userId) authorColor = '#ff6b6b';
+            else if (msg.userName.includes('👑')) authorColor = '#f093fb';
+            
+            div.innerHTML = `
+                <div class="author" style="color: ${authorColor}">${escapeHtml(msg.userName)}</div>
+                <div>${escapeHtmlWithEmoji(msg.text)}</div>
+            `;
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
         }
@@ -981,7 +1168,7 @@
             const container = document.getElementById('chatMessages');
             const div = document.createElement('div');
             div.className = 'message system';
-            div.innerHTML = `<div class="author">Система</div><div>${escapeHtml(text)}</div>`;
+            div.innerHTML = `<div class="author">Система 🤖</div><div>${text}</div>`;
             container.appendChild(div);
             container.scrollTop = container.scrollHeight;
         }
@@ -990,6 +1177,16 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function escapeHtmlWithEmoji(text) {
+            // Зберігаємо емодзі, екрануємо HTML
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
 
         function copyCode() {

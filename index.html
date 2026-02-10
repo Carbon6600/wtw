@@ -7,11 +7,7 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
         
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
             font-family: 'Inter', sans-serif;
@@ -21,11 +17,7 @@
             overflow-x: hidden;
         }
         
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
         
         .hero {
             text-align: center;
@@ -82,9 +74,7 @@
             margin: 5px;
         }
         
-        .btn-secondary:hover {
-            background: rgba(255,255,255,0.2);
-        }
+        .btn-secondary:hover { background: rgba(255,255,255,0.2); }
         
         .btn-danger {
             background: rgba(244, 67, 54, 0.2);
@@ -92,9 +82,7 @@
             color: #ff6b6b;
         }
         
-        .btn-danger:hover {
-            background: rgba(244, 67, 54, 0.4);
-        }
+        .btn-danger:hover { background: rgba(244, 67, 54, 0.4); }
         
         .btn-type {
             background: rgba(255,255,255,0.05);
@@ -112,10 +100,7 @@
             border-color: transparent;
         }
         
-        .room {
-            display: none;
-            animation: slideUp 0.5s ease;
-        }
+        .room { display: none; animation: slideUp 0.5s ease; }
         
         .room-layout {
             display: grid;
@@ -123,11 +108,7 @@
             gap: 20px;
         }
         
-        @media (max-width: 1024px) {
-            .room-layout {
-                grid-template-columns: 1fr;
-            }
-        }
+        @media (max-width: 1024px) { .room-layout { grid-template-columns: 1fr; } }
         
         .room-header {
             display: flex;
@@ -153,14 +134,8 @@
             font-weight: 600;
         }
         
-        .my-profile .label {
-            font-size: 0.8rem;
-            opacity: 0.8;
-        }
-        
-        .my-profile .name {
-            font-size: 1.1rem;
-        }
+        .my-profile .label { font-size: 0.8rem; opacity: 0.8; }
+        .my-profile .name { font-size: 1.1rem; }
         
         .code-display {
             background: rgba(0,0,0,0.3);
@@ -299,21 +274,11 @@
             animation: pulse 2s infinite;
         }
         
-        .sync-indicator.offline {
-            background: #ff6b6b;
-            animation: none;
-        }
+        .sync-indicator.offline { background: #ff6b6b; animation: none; }
         
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         
-        .sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
+        .sidebar { display: flex; flex-direction: column; gap: 20px; }
         
         .participants {
             background: rgba(255,255,255,0.05);
@@ -340,14 +305,8 @@
             transition: transform 0.2s;
         }
         
-        .user-badge:hover {
-            transform: translateX(5px);
-        }
-        
-        .user-badge.host {
-            background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
-        }
-        
+        .user-badge:hover { transform: translateX(5px); }
+        .user-badge.host { background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%); }
         .user-badge.me {
             border: 2px solid #4ecdc4;
             background: linear-gradient(45deg, #2ecc71 0%, #27ae60 100%);
@@ -368,11 +327,7 @@
             height: 500px;
         }
         
-        .chat-header {
-            padding: 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            font-weight: 600;
-        }
+        .chat-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); font-weight: 600; }
         
         .chat-messages {
             flex: 1;
@@ -422,20 +377,11 @@
             transition: transform 0.2s;
         }
         
-        .emoji-btn:hover {
-            transform: scale(1.2);
-            background: rgba(255,255,255,0.2);
-        }
+        .emoji-btn:hover { transform: scale(1.2); background: rgba(255,255,255,0.2); }
         
-        .chat-input-group {
-            padding: 15px;
-            border-top: 1px solid rgba(255,255,255,0.1);
-        }
+        .chat-input-group { padding: 15px; border-top: 1px solid rgba(255,255,255,0.1); }
         
-        .chat-input-row {
-            display: flex;
-            gap: 10px;
-        }
+        .chat-input-row { display: flex; gap: 10px; }
         
         .chat-input {
             flex: 1;
@@ -447,11 +393,7 @@
             font-size: 0.95rem;
         }
         
-        .join-section {
-            display: none;
-            text-align: center;
-            padding: 60px 20px;
-        }
+        .join-section { display: none; text-align: center; padding: 60px 20px; }
         
         .join-form {
             max-width: 400px;
@@ -476,9 +418,7 @@
             z-index: 1000;
         }
         
-        .notification.show {
-            transform: translateX(0);
-        }
+        .notification.show { transform: translateX(0); }
         
         .warning-box {
             background: rgba(255, 193, 7, 0.1);
@@ -515,11 +455,8 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* QR Dropdown Styles */
-        .qr-dropdown {
-            position: relative;
-            display: inline-block;
-        }
+        /* QR Dropdown */
+        .qr-dropdown { position: relative; display: inline-block; }
 
         .qr-dropdown-content {
             display: none;
@@ -548,16 +485,9 @@
             border-bottom: 10px solid white;
         }
 
-        .qr-dropdown-content.show {
-            display: block;
-            animation: fadeIn 0.3s ease;
-        }
+        .qr-dropdown-content.show { display: block; animation: fadeIn 0.3s ease; }
 
-        .qr-dropdown-content p {
-            color: #333;
-            margin-top: 10px;
-            font-size: 0.9rem;
-        }
+        .qr-dropdown-content p { color: #333; margin-top: 10px; font-size: 0.9rem; }
 
         .qr-close {
             position: absolute;
@@ -570,7 +500,7 @@
             color: #666;
         }
 
-        /* UAKino Player Styles */
+        /* UAKino Player */
         .uakino-player {
             background: #000;
             width: 100%;
@@ -581,29 +511,14 @@
             align-items: center;
         }
 
-        .uakino-loading {
-            color: #fff;
-            font-size: 1.2rem;
-            text-align: center;
-        }
-
-        .uakino-error {
-            color: #ff6b6b;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .uakino-iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
+        .uakino-loading { color: #fff; font-size: 1.2rem; text-align: center; }
+        .uakino-error { color: #ff6b6b; padding: 20px; text-align: center; }
+        .uakino-iframe { width: 100%; height: 100%; border: none; }
     </style>
 </head>
 <body>
     <div id="notification" class="notification"></div>
 
-    <!-- Головна -->
     <div id="homePage" class="hero">
         <h1>🎬 W2W</h1>
         <p>Watch to Watch — спільний перегляд відео в реальному часі</p>
@@ -613,7 +528,6 @@
         </div>
     </div>
 
-    <!-- Приєднання -->
     <div id="joinPage" class="join-section">
         <div class="join-form">
             <h2 style="margin-bottom: 30px;">🔑 Приєднатися до кімнати</h2>
@@ -624,7 +538,6 @@
         </div>
     </div>
 
-    <!-- Кімната -->
     <div id="roomPage" class="room container">
         <div class="room-header">
             <div class="my-profile" id="myProfile" style="display: none;">
@@ -639,7 +552,6 @@
                 <div style="margin-top: 10px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
                     <button class="btn-secondary" onclick="copyCode()">📋 Копіювати</button>
                     
-                    <!-- QR Dropdown -->
                     <div class="qr-dropdown">
                         <button class="btn-secondary" onclick="toggleQR()">📱 QR</button>
                         <div id="qrDropdown" class="qr-dropdown-content">
@@ -665,26 +577,14 @@
                         <button class="btn-type" onclick="setVideoType('stream')" id="btn-stream" style="background: linear-gradient(45deg, #e74c3c, #c0392b);">📡 Стрім</button>
                     </div>
 
-                    <div class="info-box" id="html5Info">
-                        💡 Пряме посилання на MP4, WebM, M3U8
-                    </div>
-
-                    <div class="warning-box" id="youtubeWarning" style="display: none;">
-                        ⚠️ YouTube — обмежена синхронізація
-                    </div>
-
-                    <div class="warning-box" id="iframeWarning" style="display: none;">
-                        🌐 IFrame — вбудовуємо будь-який сайт
-                    </div>
-
+                    <div class="info-box" id="html5Info">💡 Пряме посилання на MP4, WebM, M3U8</div>
+                    <div class="warning-box" id="youtubeWarning" style="display: none;">⚠️ YouTube — обмежена синхронізація</div>
+                    <div class="warning-box" id="iframeWarning" style="display: none;">🌐 IFrame — вбудовуємо будь-який сайт</div>
                     <div class="info-box" id="uakinoInfo" style="display: none;">
-                        🎥 <strong>UAKino:</strong> Вставте посилання на фільм/серіал з uakino.best — ми автоматично знайдемо плеєр!<br>
-                        <small>Працює через проксі-сервер для обходу CORS</small>
+                        🎥 <strong>UAKino:</strong> Вставте посилання на фільм/серіал з uakino.best<br>
+                        <small>Безкоштовні проксі: allorigins.win, corsproxy.io</small>
                     </div>
-
-                    <div class="info-box" id="streamInfo" style="display: none;">
-                        📡 <strong>Стрім екрану:</strong> Поділіться екраном з усіма учасниками
-                    </div>
+                    <div class="info-box" id="streamInfo" style="display: none;">📡 <strong>Стрім екрану:</strong> Поділіться екраном з усіма учасниками</div>
 
                     <div class="url-input-group">
                         <input type="text" class="url-input" id="videoUrl" placeholder="Вставте посилання на відео...">
@@ -713,15 +613,11 @@
                     <div class="controls" id="streamControls" style="display: none;">
                         <button class="btn-primary" onclick="startScreenShare()" id="btnStartStream">📡 Почати стрім</button>
                         <button class="btn-secondary" onclick="stopScreenShare()" id="btnStopStream" style="display: none;">⏹ Зупинити</button>
-                        <div class="info-box" style="margin: 0; flex: 1;">
-                            📡 Поділіться екраном з усіма
-                        </div>
+                        <div class="info-box" style="margin: 0; flex: 1;">📡 Поділіться екраном з усіма</div>
                     </div>
 
                     <div class="controls" id="limitedControls" style="display: none;">
-                        <div class="warning-box" style="margin: 0; text-align: center;">
-                            📺 Керування недоступне для цього типу відео
-                        </div>
+                        <div class="warning-box" style="margin: 0; text-align: center;">📺 Керування недоступне для цього типу відео</div>
                     </div>
                 </div>
             </div>
@@ -766,7 +662,6 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -786,15 +681,15 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // CORS Proxy list for UAKino
+        // === БЕЗКОШТОВНІ CORS ПРОКСІ ===
+        // Додайте свій Cloudflare Worker перший для найкращої стабільності
         const CORS_PROXIES = [
+            // 'https://your-worker.your-name.workers.dev/?url=', // ← РОЗКОМЕНТУЙТЕ ПІСЛЯ СТВОРЕННЯ
             'https://api.allorigins.win/raw?url=',
             'https://corsproxy.io/?',
             'https://api.codetabs.com/v1/proxy?quest=',
-            'https://thingproxy.freeboard.io/fetch/'
         ];
 
-        // Cute nicknames
         const cuteAdjectives = ['Милий','Солодкий','Пухнастий','Яскравий','Веселий','Сонячний','Місячний','Зоряний','Радісний','Щасливий','Лагідний','Добрий','Хоробрий','Розумний','Швидкий','Смішний','Мудрий','Маленький','Великий','Синій','Рожевий','Зелений','Фіолетовий'];
         const cuteNouns = ['Їжачок','Котик','Песик','Зайчик','Ведмедик','Пандочка','Лисичка','Вовчик','Тигрик','Левчик','Слоник','Жирафчик','Пінгвінчик','Коала','Капібара','Носоріжок','Бегемотик','Мавпочка','Папуга','Совеня','Олень','Лелека','Дельфін','Кит'];
         const cuteEmojis = ['🦔','🐱','🐶','🐰','🐻','🐼','🦊','🐺','🐯','🦁','🐘','🦒','🐧','🐨','🦫','🦏','🦛','🐒','🦜','🦉','🦌','🐦','🐬','🐋'];
@@ -807,7 +702,6 @@
             return `${adj}${noun}${num} ${emoji}`;
         }
 
-        // Global variables
         let currentRoom = null, userId = null, userName = '', isHost = false;
         let roomRef = null, player = null, videoType = 'html5';
         let isSyncing = false, lastSyncTime = 0;
@@ -876,10 +770,8 @@
             qrContainer.innerHTML = '';
             new QRCode(qrContainer, {
                 text: `${window.location.origin}${window.location.pathname}?room=${currentRoom}`,
-                width: 150,
-                height: 150,
-                colorDark: "#000000",
-                colorLight: "#ffffff",
+                width: 150, height: 150,
+                colorDark: "#000000", colorLight: "#ffffff",
                 correctLevel: QRCode.CorrectLevel.M
             });
         }
@@ -889,11 +781,9 @@
             dropdown.classList.toggle('show');
         }
 
-        // Close QR when clicking outside
         document.addEventListener('click', function(event) {
             const qrDropdown = document.getElementById('qrDropdown');
             const qrButton = event.target.closest('.qr-dropdown');
-            
             if (!qrButton && qrDropdown.classList.contains('show')) {
                 qrDropdown.classList.remove('show');
             }
@@ -904,54 +794,38 @@
             if (newName && newName.trim()) {
                 userName = newName.trim();
                 document.getElementById('myProfileName').textContent = userName;
-                
                 if (roomRef) {
                     roomRef.child('users/' + userId).update({
                         name: userName,
                         updatedAt: firebase.database.ServerValue.TIMESTAMP
                     });
                 }
-                
                 showNotification('✅ Ім\'я змінено!');
             }
         }
 
         function leaveRoom() {
             if (confirm('Вийти з кімнати?')) {
-                if (roomRef && userId) {
-                    roomRef.child('users/' + userId).remove();
-                }
-                if (localStream) {
-                    localStream.getTracks().forEach(track => track.stop());
-                }
+                if (roomRef && userId) roomRef.child('users/' + userId).remove();
+                if (localStream) localStream.getTracks().forEach(track => track.stop());
                 location.reload();
             }
         }
 
         function initRoom() {
-            console.log('🔧 Ініціалізація кімнати:', currentRoom);
             roomRef = database.ref('rooms/' + currentRoom);
-            
             const userRef = roomRef.child('users/' + userId);
             userRef.set({
-                name: userName,
-                isHost: isHost,
+                name: userName, isHost: isHost,
                 joinedAt: firebase.database.ServerValue.TIMESTAMP,
                 lastSeen: firebase.database.ServerValue.TIMESTAMP
             });
-            
             userRef.onDisconnect().remove();
-            
-            setInterval(() => {
-                userRef.update({ lastSeen: firebase.database.ServerValue.TIMESTAMP });
-            }, 5000);
-            
+            setInterval(() => userRef.update({ lastSeen: firebase.database.ServerValue.TIMESTAMP }), 5000);
             listenToRoom();
         }
 
         function listenToRoom() {
-            console.log('👂 Слухаємо кімнату...');
-            
             if (usersListener) roomRef.child('users').off('value', usersListener);
             if (videoListener) roomRef.child('video').off('value', videoListener);
             if (chatListener) roomRef.child('chat').off('child_added', chatListener);
@@ -959,49 +833,32 @@
             let updateTimeout;
             usersListener = roomRef.child('users').on('value', (snapshot) => {
                 clearTimeout(updateTimeout);
-                updateTimeout = setTimeout(() => {
-                    const users = snapshot.val() || {};
-                    console.log('👥 Користувачів:', Object.keys(users).length);
-                    updateUserList(users);
-                }, 100);
+                updateTimeout = setTimeout(() => updateUserList(snapshot.val() || {}), 100);
             });
             
             videoListener = roomRef.child('video').on('value', (snapshot) => {
                 const videoState = snapshot.val();
-                console.log('📹 Відео оновлення:', videoState);
-                if (videoState && videoState.updatedBy !== userId) {
-                    syncVideoState(videoState);
-                }
+                if (videoState && videoState.updatedBy !== userId) syncVideoState(videoState);
             });
             
             chatListener = roomRef.child('chat').limitToLast(50).on('child_added', (snapshot) => {
                 const msg = snapshot.val();
-                if (msg && msg.userId !== userId) {
-                    displayMessage(msg);
-                }
+                if (msg && msg.userId !== userId) displayMessage(msg);
             });
         }
 
         function updateUserList(users) {
             const list = document.getElementById('userList');
-            const currentHtml = list.innerHTML;
-            
-            let newHtml = '';
-            let count = 0;
-            
+            let newHtml = ''; let count = 0;
             Object.entries(users).forEach(([uid, user]) => {
                 count++;
                 const isMe = uid === userId;
                 const isHostBadge = user.isHost ? '👑' : '👤';
                 const className = isMe ? 'user-badge me' : (user.isHost ? 'user-badge host' : 'user-badge');
-                
                 newHtml += `<div class="${className}" onclick="mentionUser('${user.name}')">${isHostBadge} ${user.name}</div>`;
             });
-            
-            if (currentHtml !== newHtml) {
-                list.innerHTML = newHtml;
-                document.getElementById('userCount').textContent = count;
-            }
+            list.innerHTML = newHtml;
+            document.getElementById('userCount').textContent = count;
         }
 
         function setVideoType(type) {
@@ -1009,11 +866,9 @@
             document.querySelectorAll('.btn-type').forEach(btn => btn.classList.remove('active'));
             document.getElementById('btn-' + type).classList.add('active');
             
-            document.getElementById('html5Info').style.display = 'none';
-            document.getElementById('youtubeWarning').style.display = 'none';
-            document.getElementById('iframeWarning').style.display = 'none';
-            document.getElementById('uakinoInfo').style.display = 'none';
-            document.getElementById('streamInfo').style.display = 'none';
+            ['html5Info','youtubeWarning','iframeWarning','uakinoInfo','streamInfo'].forEach(id => 
+                document.getElementById(id).style.display = 'none'
+            );
             
             if (type === 'html5') document.getElementById('html5Info').style.display = 'block';
             else if (type === 'youtube') document.getElementById('youtubeWarning').style.display = 'block';
@@ -1021,107 +876,57 @@
             else if (type === 'uakino') document.getElementById('uakinoInfo').style.display = 'block';
             else if (type === 'stream') document.getElementById('streamInfo').style.display = 'block';
             
-            document.getElementById('videoControls').style.display = 'none';
-            document.getElementById('streamControls').style.display = 'none';
-            document.getElementById('limitedControls').style.display = 'none';
+            document.getElementById('videoControls').style.display = type === 'html5' ? 'flex' : 'none';
+            document.getElementById('streamControls').style.display = type === 'stream' ? 'flex' : 'none';
+            document.getElementById('limitedControls').style.display = (type !== 'html5' && type !== 'stream') ? 'flex' : 'none';
             
-            if (type === 'html5') {
-                document.getElementById('videoControls').style.display = 'flex';
-                document.getElementById('videoUrl').placeholder = 'Вставте пряме посилання MP4...';
-            } else if (type === 'stream') {
-                document.getElementById('streamControls').style.display = 'flex';
-                document.getElementById('videoUrl').placeholder = 'Стрімінг не потребує посилання...';
-            } else {
-                document.getElementById('limitedControls').style.display = 'flex';
-                if (type === 'youtube') document.getElementById('videoUrl').placeholder = 'Вставте посилання YouTube...';
-                else if (type === 'iframe') document.getElementById('videoUrl').placeholder = 'Вставте посилання на сайт...';
-                else if (type === 'uakino') document.getElementById('videoUrl').placeholder = 'Вставте посилання uakino.best/...';
-            }
+            const placeholders = {
+                html5: 'Вставте пряме посилання MP4...',
+                youtube: 'Вставте посилання YouTube...',
+                iframe: 'Вставте посилання на сайт...',
+                uakino: 'Вставте посилання uakino.best/...',
+                stream: 'Стрімінг не потребує посилання...'
+            };
+            document.getElementById('videoUrl').placeholder = placeholders[type];
         }
 
-        // Enhanced UAKino parser with multiple proxy attempts
+        // === UAKino Парсер з безкоштовними проксі ===
         async function parseUakino(url) {
-            console.log('🔍 Парсинг UAKino:', url);
-            
-            // Extract film ID from URL
             const match = url.match(/uakino\.best\/.*\/(\d+)-/);
-            if (!match) {
-                throw new Error('Невірне посилання UAKino. Очікується формат: uakino.best/.../1234-film-name');
-            }
+            if (!match) throw new Error('Невірне посилання. Очікується: uakino.best/.../1234-film-name');
             
             const filmId = match[1];
-            console.log('🎬 ID фільму:', filmId);
-            
-            // Try to fetch page through proxies
-            let pageHtml = null;
-            let usedProxy = null;
+            let pageHtml = null; let usedProxy = null;
             
             for (const proxy of CORS_PROXIES) {
                 try {
-                    console.log('🌐 Спроба через проксі:', proxy);
                     const response = await fetch(proxy + encodeURIComponent(url), {
-                        method: 'GET',
-                        headers: {
-                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                        }
+                        headers: { 'Accept': 'text/html,*/*' }
                     });
-                    
                     if (response.ok) {
                         pageHtml = await response.text();
                         usedProxy = proxy;
-                        console.log('✅ Успішно отримано через:', proxy);
                         break;
                     }
-                } catch (e) {
-                    console.log('❌ Проксі не спрацював:', proxy, e.message);
-                    continue;
-                }
+                } catch (e) { continue; }
             }
             
-            if (!pageHtml) {
-                throw new Error('Не вдалося отримати сторінку. Всі CORS проксі недоступні.');
-            }
+            if (!pageHtml) throw new Error('Усі безкоштовні проксі недоступні. Спробуйте пізніше або додайте власний.');
             
-            // Parse player URL from page
+            // Шукаємо плеєр
             const playerMatch = pageHtml.match(/data-src="([^"]*\/player\/[^"]*)"/i) || 
                                pageHtml.match(/src="([^"]*\/player\/[^"]*)"/i) ||
                                pageHtml.match(/player\.php\?id=(\d+)/i);
             
-            let playerUrl = null;
+            let playerUrl = playerMatch ? (playerMatch[1].includes('http') ? playerMatch[1] : 'https://uakino.best' + playerMatch[1]) 
+                                        : `https://uakino.best/player/${filmId}`;
             
-            if (playerMatch) {
-                if (playerMatch[1].includes('http')) {
-                    playerUrl = playerMatch[1];
-                } else {
-                    // Relative URL
-                    playerUrl = 'https://uakino.best' + (playerMatch[1].startsWith('/') ? '' : '/') + playerMatch[1];
-                }
-            }
-            
-            // Alternative: try to construct player URL directly
-            if (!playerUrl) {
-                playerUrl = `https://uakino.best/player/${filmId}`;
-            }
-            
-            console.log('🎥 URL плеєра:', playerUrl);
-            
-            return {
-                type: 'uakino',
-                url: url,
-                filmId: filmId,
-                playerUrl: playerUrl,
-                proxy: usedProxy
-            };
+            return { type: 'uakino', url, filmId, playerUrl, proxy: usedProxy };
         }
 
         async function loadVideo() {
             const url = document.getElementById('videoUrl').value.trim();
-            if (!url) {
-                showNotification('❌ Введіть посилання', 'error');
-                return;
-            }
-            
-            console.log('📹 Завантаження:', url, 'тип:', videoType);
+            if (!url) { showNotification('❌ Введіть посилання', 'error'); return; }
             
             try {
                 if (videoType === 'uakino') {
@@ -1134,145 +939,66 @@
                 } else if (videoType === 'html5') {
                     loadHTML5(url);
                 } else if (videoType === 'stream') {
-                    showNotification('📡 Для стрімінгу натисніть "Почати стрім"', 'error');
+                    showNotification('📡 Натисніть "Почати стрім"', 'error');
                 }
             } catch (err) {
-                console.error('❌ Помилка:', err);
                 showNotification('❌ ' + err.message, 'error');
-                
-                // If UAKino fails, offer alternative
-                if (videoType === 'uakino') {
-                    setTimeout(() => {
-                        if (confirm('Автоматичний парсинг не вдався. Спробувати відкрити через iframe (може не працювати)?')) {
-                            loadIframe(url);
-                        }
-                    }, 1000);
+                if (videoType === 'uakino' && confirm('Парсинг не вдався. Відкрити як звичайний iframe?')) {
+                    loadIframe(url);
                 }
             }
         }
 
         function loadUakino(data) {
-            console.log('🎥 Завантаження UAKino:', data);
-            
             const container = document.getElementById('videoPlayer');
+            container.innerHTML = `<div class="uakino-player"><div class="uakino-loading"><div style="font-size: 3rem; margin-bottom: 20px;">🎬</div><div>Завантаження...</div></div></div>`;
             
-            // Create loading state
-            container.innerHTML = `
-                <div class="uakino-player" id="uakinoLoading">
-                    <div class="uakino-loading">
-                        <div style="font-size: 3rem; margin-bottom: 20px;">🎬</div>
-                        <div>Завантаження UAKino...</div>
-                        <div style="font-size: 0.8rem; color: #888; margin-top: 10px;">ID: ${data.filmId}</div>
-                    </div>
-                </div>
-            `;
-            
-            updateSyncStatus('UAKino: завантаження...', 'warning');
-            
-            // Try to load player through proxy
-            const proxyUrl = data.proxy ? data.proxy + encodeURIComponent(data.playerUrl) : data.playerUrl;
-            
-            // Create iframe with UAKino player
+            const proxyUrl = data.proxy + encodeURIComponent(data.playerUrl);
             setTimeout(() => {
-                container.innerHTML = `
-                    <iframe 
-                        src="${proxyUrl}" 
-                        class="uakino-iframe" 
-                        allowfullscreen 
-                        sandbox="allow-same-origin allow-scripts allow-presentation allow-forms"
-                        onload="document.getElementById('uakinoStatus').textContent='✅ Плеєр завантажено'"
-                        onerror="document.getElementById('uakinoStatus').textContent='❌ Помилка завантаження'"
-                    ></iframe>
-                `;
+                container.innerHTML = `<iframe src="${proxyUrl}" class="uakino-iframe" allowfullscreen sandbox="allow-same-origin allow-scripts allow-presentation"></iframe>`;
             }, 500);
             
-            // Save to Firebase
             roomRef.child('video').set({
-                type: 'uakino',
-                url: data.url,
-                filmId: data.filmId,
-                playerUrl: data.playerUrl,
-                proxy: data.proxy,
-                updatedBy: userId,
-                updatedAt: firebase.database.ServerValue.TIMESTAMP
+                type: 'uakino', url: data.url, filmId: data.filmId,
+                playerUrl: data.playerUrl, proxy: data.proxy,
+                updatedBy: userId, updatedAt: firebase.database.ServerValue.TIMESTAMP
             });
             
-            updateSyncStatus('UAKino (синхронізація обмежена)', 'warning');
-            addSystemMessage(`${userName} відкрив UAKino 🎥 (ID: ${data.filmId})`);
+            updateSyncStatus('UAKino (обмежено)', 'warning');
+            addSystemMessage(`${userName} відкрив UAKino 🎥`);
             showNotification('🎬 UAKino завантажено!');
         }
 
         function loadYouTube(url) {
-            let videoId = '';
-            if (url.includes('v=')) videoId = url.split('v=')[1].split('&')[0];
-            else if (url.includes('youtu.be/')) videoId = url.split('youtu.be/')[1].split('?')[0];
-            
-            if (!videoId) throw new Error('Невірне посилання YouTube');
-            
-            const container = document.getElementById('videoPlayer');
-            container.innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${videoId}?enablejsapi=1" frameborder="0" allowfullscreen></iframe>`;
-            
+            let videoId = url.includes('v=') ? url.split('v=')[1].split('&')[0] : url.split('youtu.be/')[1].split('?')[0];
+            document.getElementById('videoPlayer').innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${videoId}" frameborder="0" allowfullscreen></iframe>`;
             updateSyncStatus('YouTube', 'warning');
-            
-            roomRef.child('video').set({
-                type: 'youtube',
-                videoId: videoId,
-                url: url,
-                updatedBy: userId,
-                updatedAt: firebase.database.ServerValue.TIMESTAMP
-            });
-            
+            roomRef.child('video').set({ type: 'youtube', videoId, url, updatedBy: userId, updatedAt: firebase.database.ServerValue.TIMESTAMP });
             addSystemMessage(`${userName} завантажив YouTube 🎬`);
         }
 
         function loadIframe(url) {
-            const container = document.getElementById('videoPlayer');
-            container.innerHTML = `<iframe src="${url}" width="100%" height="100%" frameborder="0" allowfullscreen sandbox="allow-same-origin allow-scripts allow-presentation allow-forms"></iframe>`;
-            
+            document.getElementById('videoPlayer').innerHTML = `<iframe src="${url}" width="100%" height="100%" frameborder="0" allowfullscreen sandbox="allow-same-origin allow-scripts"></iframe>`;
             updateSyncStatus('IFrame', 'warning');
-            
-            roomRef.child('video').set({
-                type: 'iframe',
-                url: url,
-                updatedBy: userId,
-                updatedAt: firebase.database.ServerValue.TIMESTAMP
-            });
-            
+            roomRef.child('video').set({ type: 'iframe', url, updatedBy: userId, updatedAt: firebase.database.ServerValue.TIMESTAMP });
             addSystemMessage(`${userName} відкрив сайт 🌐`);
         }
 
         function loadHTML5(url) {
             const container = document.getElementById('videoPlayer');
             container.innerHTML = `<video id="html5Video" controls style="width:100%; height:100%;"></video>`;
-            
             player = document.getElementById('html5Video');
             player.src = url;
             
-            player.oncanplay = () => {
-                updateSyncStatus('Готово ✅', 'success');
-                updateTimeDisplay();
-            };
-            
+            player.oncanplay = () => { updateSyncStatus('Готово ✅', 'success'); updateTimeDisplay(); };
             player.onplay = () => { if (!isSyncing) broadcastState(); };
             player.onpause = () => { if (!isSyncing) broadcastState(); };
             player.ontimeupdate = () => {
                 updateTimeDisplay();
-                const now = Date.now();
-                if (now - lastSyncTime > 2000 && !player.paused) {
-                    broadcastState();
-                    lastSyncTime = now;
-                }
+                if (Date.now() - lastSyncTime > 2000 && !player.paused) { broadcastState(); lastSyncTime = Date.now(); }
             };
             
-            roomRef.child('video').set({
-                type: 'html5',
-                url: url,
-                currentTime: 0,
-                isPlaying: false,
-                updatedBy: userId,
-                updatedAt: firebase.database.ServerValue.TIMESTAMP
-            });
-            
+            roomRef.child('video').set({ type: 'html5', url, currentTime: 0, isPlaying: false, updatedBy: userId, updatedAt: firebase.database.ServerValue.TIMESTAMP });
             addSystemMessage(`${userName} завантажив відео 🎥`);
         }
 
@@ -1280,77 +1006,33 @@
             document.getElementById('videoPlayer').innerHTML = '';
             document.getElementById('videoUrl').value = '';
             updateSyncStatus('Очікування...', 'success');
-            
-            roomRef.child('video').set({
-                type: 'none',
-                updatedBy: userId,
-                updatedAt: firebase.database.ServerValue.TIMESTAMP
-            });
-            
+            roomRef.child('video').set({ type: 'none', updatedBy: userId, updatedAt: firebase.database.ServerValue.TIMESTAMP });
             addSystemMessage(`${userName} очистив відео 🗑️`);
         }
 
         async function startScreenShare() {
-            if (!isHost) {
-                showNotification('❌ Тільки хост може стримити', 'error');
-                return;
-            }
-            
+            if (!isHost) { showNotification('❌ Тільки хост', 'error'); return; }
             try {
-                localStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: { cursor: "always" },
-                    audio: true
-                });
-                
-                const container = document.getElementById('videoPlayer');
-                container.innerHTML = `<video id="localVideo" autoplay muted style="width:100%; height:100%;"></video>`;
+                localStream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: "always" }, audio: true });
+                document.getElementById('videoPlayer').innerHTML = `<video id="localVideo" autoplay muted style="width:100%; height:100%;"></video>`;
                 document.getElementById('localVideo').srcObject = localStream;
-                
                 document.getElementById('btnStartStream').style.display = 'none';
                 document.getElementById('btnStopStream').style.display = 'inline-block';
-                
                 updateSyncStatus('🔴 Стрім активний', 'success');
-                
-                roomRef.child('video').set({
-                    type: 'stream',
-                    hostId: userId,
-                    active: true,
-                    updatedBy: userId,
-                    updatedAt: firebase.database.ServerValue.TIMESTAMP
-                });
-                
+                roomRef.child('video').set({ type: 'stream', hostId: userId, active: true, updatedBy: userId, updatedAt: firebase.database.ServerValue.TIMESTAMP });
                 roomRef.child('users/' + userId).update({ streaming: true });
-                
-                addSystemMessage(`${userName} почав стрім! 🔴📡`);
-                
-                localStream.getVideoTracks()[0].onended = () => {
-                    stopScreenShare();
-                };
-                
-            } catch (err) {
-                showNotification('❌ ' + err.message, 'error');
-            }
+                addSystemMessage(`${userName} почав стрім! 🔴`);
+                localStream.getVideoTracks()[0].onended = stopScreenShare;
+            } catch (err) { showNotification('❌ ' + err.message, 'error'); }
         }
 
         function stopScreenShare() {
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-                localStream = null;
-            }
-            
+            if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
             document.getElementById('videoPlayer').innerHTML = '';
             document.getElementById('btnStartStream').style.display = 'inline-block';
             document.getElementById('btnStopStream').style.display = 'none';
-            
-            roomRef.child('video').set({
-                type: 'none',
-                active: false,
-                updatedBy: userId,
-                updatedAt: firebase.database.ServerValue.TIMESTAMP
-            });
-            
+            roomRef.child('video').set({ type: 'none', active: false, updatedBy: userId, updatedAt: firebase.database.ServerValue.TIMESTAMP });
             roomRef.child('users/' + userId).update({ streaming: false });
-            
             updateSyncStatus('Стрім зупинено', 'success');
             addSystemMessage(`${userName} зупинив стрім ⏹`);
         }
@@ -1361,85 +1043,40 @@
                 updateSyncStatus('Очікування...', 'success');
                 return;
             }
-            
             const container = document.getElementById('videoPlayer');
             
             if (state.type === 'youtube' && state.videoId) {
-                if (!container.querySelector('iframe')?.src.includes(state.videoId)) {
-                    container.innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${state.videoId}?enablejsapi=1" frameborder="0" allowfullscreen></iframe>`;
-                }
+                if (!container.querySelector('iframe')?.src.includes(state.videoId))
+                    container.innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${state.videoId}" frameborder="0" allowfullscreen></iframe>`;
                 updateSyncStatus('YouTube від хоста', 'warning');
-                
             } else if (state.type === 'uakino' && state.playerUrl) {
-                // Reconstruct proxy URL for viewers
-                const proxyUrl = state.proxy ? state.proxy + encodeURIComponent(state.playerUrl) : state.playerUrl;
-                
-                if (!container.querySelector('iframe')?.src.includes('uakino') && 
-                    !container.querySelector('iframe')?.src.includes(state.filmId)) {
-                    container.innerHTML = `
-                        <iframe 
-                            src="${proxyUrl}" 
-                            class="uakino-iframe" 
-                            allowfullscreen 
-                            sandbox="allow-same-origin allow-scripts allow-presentation allow-forms"
-                        ></iframe>
-                    `;
-                }
-                updateSyncStatus(`UAKino від хоста (ID: ${state.filmId})`, 'warning');
-                
+                const proxyUrl = state.proxy + encodeURIComponent(state.playerUrl);
+                if (!container.querySelector('iframe')?.src.includes(state.filmId))
+                    container.innerHTML = `<iframe src="${proxyUrl}" class="uakino-iframe" allowfullscreen sandbox="allow-same-origin allow-scripts"></iframe>`;
+                updateSyncStatus(`UAKino (ID: ${state.filmId})`, 'warning');
             } else if (state.type === 'iframe' && state.url) {
-                if (container.querySelector('iframe')?.src !== state.url) {
-                    container.innerHTML = `<iframe src="${state.url}" width="100%" height="100%" frameborder="0" allowfullscreen sandbox="allow-same-origin allow-scripts allow-presentation allow-forms"></iframe>`;
-                }
+                if (container.querySelector('iframe')?.src !== state.url)
+                    container.innerHTML = `<iframe src="${state.url}" width="100%" height="100%" frameborder="0" allowfullscreen sandbox="allow-same-origin allow-scripts"></iframe>`;
                 updateSyncStatus('IFrame від хоста', 'warning');
-                
             } else if (state.type === 'stream' && state.active) {
                 if (!isHost) {
-                    container.innerHTML = `
-                        <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; background:#000; color:#fff;">
-                            <div style="font-size:4rem; margin-bottom:20px;">🔴 LIVE</div>
-                            <div>Хост веде стрім</div>
-                            <div style="color:#888; margin-top:10px; font-size:0.9rem;">
-                                Для перегляду потрібен окремий додаток
-                            </div>
-                        </div>
-                    `;
+                    container.innerHTML = `<div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; background:#000; color:#fff;"><div style="font-size:4rem; margin-bottom:20px;">🔴 LIVE</div><div>Хост веде стрім</div></div>`;
                     updateSyncStatus('🔴 Стрім від хоста', 'success');
                 }
-                
             } else if (state.type === 'html5' && state.url) {
                 if (!player || player.src !== state.url) {
                     container.innerHTML = `<video id="html5Video" controls style="width:100%; height:100%;"></video>`;
                     player = document.getElementById('html5Video');
                     player.src = state.url;
-                    
-                    player.oncanplay = () => {
-                        updateSyncStatus('Готово ✅', 'success');
-                        if (state.currentTime > 0) player.currentTime = state.currentTime;
-                    };
-                    
+                    player.oncanplay = () => { updateSyncStatus('Готово ✅', 'success'); if (state.currentTime > 0) player.currentTime = state.currentTime; };
                     player.onplay = () => { if (!isSyncing) broadcastState(); };
                     player.onpause = () => { if (!isSyncing) broadcastState(); };
-                    player.ontimeupdate = () => {
-                        updateTimeDisplay();
-                        const now = Date.now();
-                        if (now - lastSyncTime > 2000 && !player.paused) {
-                            broadcastState();
-                            lastSyncTime = now;
-                        }
-                    };
+                    player.ontimeupdate = () => { updateTimeDisplay(); if (Date.now() - lastSyncTime > 2000 && !player.paused) { broadcastState(); lastSyncTime = Date.now(); }};
                 } else {
                     isSyncing = true;
-                    if (Math.abs(player.currentTime - state.currentTime) > 2) {
-                        player.currentTime = state.currentTime;
-                    }
-                    if (state.isPlaying && player.paused) {
-                        player.play().catch(e => console.log('Autoplay blocked'));
-                        updateSyncStatus('▶️ Відтворення', 'success');
-                    } else if (!state.isPlaying && !player.paused) {
-                        player.pause();
-                        updateSyncStatus('⏸️ Пауза', 'success');
-                    }
+                    if (Math.abs(player.currentTime - state.currentTime) > 2) player.currentTime = state.currentTime;
+                    if (state.isPlaying && player.paused) { player.play().catch(e => {}); updateSyncStatus('▶️ Відтворення', 'success'); }
+                    else if (!state.isPlaying && !player.paused) { player.pause(); updateSyncStatus('⏸️ Пауза', 'success'); }
                     setTimeout(() => isSyncing = false, 500);
                 }
             }
@@ -1447,139 +1084,76 @@
 
         function broadcastState() {
             if (!roomRef || videoType !== 'html5' || !player) return;
-            
-            roomRef.child('video').update({
-                currentTime: player.currentTime,
-                isPlaying: !player.paused,
-                updatedBy: userId,
-                updatedAt: firebase.database.ServerValue.TIMESTAMP
-            });
+            roomRef.child('video').update({ currentTime: player.currentTime, isPlaying: !player.paused, updatedBy: userId, updatedAt: firebase.database.ServerValue.TIMESTAMP });
         }
 
         function videoAction(action) {
-            if (videoType !== 'html5' || !player) {
-                showNotification('⚠️ Тільки для MP4', 'error');
-                return;
-            }
-            if (action === 'play') {
-                player.play();
-                updateSyncStatus('▶️ Відтворення', 'success');
-            } else if (action === 'pause') {
-                player.pause();
-                updateSyncStatus('⏸️ Пауза', 'success');
-            }
+            if (videoType !== 'html5' || !player) { showNotification('⚠️ Тільки для MP4', 'error'); return; }
+            if (action === 'play') { player.play(); updateSyncStatus('▶️ Відтворення', 'success'); }
+            else if (action === 'pause') { player.pause(); updateSyncStatus('⏸️ Пауза', 'success'); }
             setTimeout(broadcastState, 100);
         }
 
         function seek(seconds) {
-            if (videoType !== 'html5' || !player) {
-                showNotification('⚠️ Тільки для MP4', 'error');
-                return;
-            }
-            player.currentTime += seconds;
-            updateTimeDisplay();
-            setTimeout(broadcastState, 100);
+            if (videoType !== 'html5' || !player) { showNotification('⚠️ Тільки для MP4', 'error'); return; }
+            player.currentTime += seconds; updateTimeDisplay(); setTimeout(broadcastState, 100);
         }
 
         function manualSeek(value) {
             if (videoType !== 'html5' || !player) return;
-            player.currentTime = (value / 1000) * player.duration;
-            updateTimeDisplay();
+            player.currentTime = (value / 1000) * player.duration; updateTimeDisplay();
         }
 
         function syncRequest() {
-            if (videoType !== 'html5') {
-                showNotification('📺 Ручна синхронізація для цього типу');
-                return;
-            }
-            broadcastState();
-            showNotification('🔄 Синхронізовано!');
-            addSystemMessage(`${userName} синхронізував 🔄`);
+            if (videoType !== 'html5') { showNotification('📺 Ручна синхронізація для цього типу'); return; }
+            broadcastState(); showNotification('🔄 Синхронізовано!'); addSystemMessage(`${userName} синхронізував 🔄`);
         }
 
         function updateTimeDisplay() {
             if (!player || videoType !== 'html5') return;
-            const current = formatTime(player.currentTime || 0);
-            const total = formatTime(player.duration || 0);
-            document.getElementById('timeDisplay').textContent = `${current} / ${total}`;
-            if (player.duration) {
-                document.getElementById('progressBar').value = (player.currentTime / player.duration) * 1000;
-            }
+            document.getElementById('timeDisplay').textContent = `${formatTime(player.currentTime || 0)} / ${formatTime(player.duration || 0)}`;
+            if (player.duration) document.getElementById('progressBar').value = (player.currentTime / player.duration) * 1000;
         }
 
         function formatTime(seconds) {
             if (isNaN(seconds)) return '00:00';
-            const mins = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
+            const mins = Math.floor(seconds / 60), secs = Math.floor(seconds % 60);
             return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         }
 
         function updateSyncStatus(text, type) {
             document.getElementById('syncText').textContent = text;
-            const indicator = document.getElementById('syncIndicator');
-            indicator.className = 'sync-indicator' + (type === 'error' ? ' offline' : '');
+            document.getElementById('syncIndicator').className = 'sync-indicator' + (type === 'error' ? ' offline' : '');
         }
 
-        function addEmoji(emoji) {
-            const input = document.getElementById('chatInput');
-            input.value += emoji;
-            input.focus();
-        }
-
-        function mentionUser(name) {
-            const input = document.getElementById('chatInput');
-            input.value += '@' + name.split(' ')[0] + ' ';
-            input.focus();
-        }
-
-        function handleChatKey(e) {
-            if (e.key === 'Enter') sendMessage();
-        }
+        function addEmoji(emoji) { document.getElementById('chatInput').value += emoji; document.getElementById('chatInput').focus(); }
+        function mentionUser(name) { const input = document.getElementById('chatInput'); input.value += '@' + name.split(' ')[0] + ' '; input.focus(); }
+        function handleChatKey(e) { if (e.key === 'Enter') sendMessage(); }
 
         function sendMessage() {
-            const input = document.getElementById('chatInput');
-            const text = input.value.trim();
+            const input = document.getElementById('chatInput'), text = input.value.trim();
             if (!text || !roomRef) return;
-            
-            const msg = {
-                userId: userId,
-                userName: userName,
-                text: text,
-                timestamp: firebase.database.ServerValue.TIMESTAMP
-            };
-            
-            roomRef.child('chat').push(msg);
-            displayMessage(msg);
-            input.value = '';
+            const msg = { userId, userName, text, timestamp: firebase.database.ServerValue.TIMESTAMP };
+            roomRef.child('chat').push(msg); displayMessage(msg); input.value = '';
         }
 
         function displayMessage(msg) {
-            const container = document.getElementById('chatMessages');
-            const div = document.createElement('div');
+            const container = document.getElementById('chatMessages'), div = document.createElement('div');
             div.className = 'message';
-            
             let authorColor = '#4ecdc4';
             if (msg.userId === userId) authorColor = '#ff6b6b';
-            else if (msg.isHost) authorColor = '#f093fb';
-            
             div.innerHTML = `<div class="author" style="color: ${authorColor}" onclick="mentionUser('${msg.userName}')">${msg.userName}</div><div>${msg.text}</div>`;
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
+            container.appendChild(div); container.scrollTop = container.scrollHeight;
         }
 
         function addSystemMessage(text) {
-            const container = document.getElementById('chatMessages');
-            const div = document.createElement('div');
+            const container = document.getElementById('chatMessages'), div = document.createElement('div');
             div.className = 'message system';
             div.innerHTML = `<div class="author">Система 🤖</div><div>${text}</div>`;
-            container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
+            container.appendChild(div); container.scrollTop = container.scrollHeight;
         }
 
-        function copyCode() {
-            navigator.clipboard.writeText(currentRoom);
-            showNotification('📋 Код скопійовано: ' + currentRoom);
-        }
+        function copyCode() { navigator.clipboard.writeText(currentRoom); showNotification('📋 Код: ' + currentRoom); }
 
         function showNotification(text, type = 'success') {
             const notif = document.getElementById('notification');
@@ -1591,21 +1165,13 @@
         }
 
         window.onload = function() {
-            const params = new URLSearchParams(window.location.search);
-            const room = params.get('room');
-            if (room) {
-                document.getElementById('joinCode').value = room;
-                showJoin();
-            }
+            const room = new URLSearchParams(window.location.search).get('room');
+            if (room) { document.getElementById('joinCode').value = room; showJoin(); }
         };
 
         window.onbeforeunload = function() {
-            if (roomRef && userId) {
-                roomRef.child('users/' + userId).remove();
-            }
-            if (localStream) {
-                localStream.getTracks().forEach(track => track.stop());
-            }
+            if (roomRef && userId) roomRef.child('users/' + userId).remove();
+            if (localStream) localStream.getTracks().forEach(track => track.stop());
         };
     </script>
 </body>

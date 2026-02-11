@@ -440,6 +440,16 @@
             color: #4ecdc4;
         }
         
+        .success-box {
+            background: rgba(46, 204, 113, 0.1);
+            border: 1px solid rgba(46, 204, 113, 0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            color: #2ecc71;
+        }
+        
         @media (max-width: 768px) {
             .hero h1 { font-size: 2.5rem; }
             .room-header { flex-direction: column; text-align: center; }
@@ -500,20 +510,59 @@
             color: #666;
         }
 
-        /* UAKino Player */
-        .uakino-player {
-            background: #000;
+        /* Quality selector */
+        .quality-selector {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .quality-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+        }
+        
+        .quality-btn:hover { background: rgba(255,255,255,0.2); }
+        .quality-btn.active {
+            background: linear-gradient(45deg, #4ecdc4, #44a3aa);
+            border-color: transparent;
+        }
+
+        /* Loading overlay */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
+            background: rgba(0,0,0,0.9);
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            z-index: 20;
+            border-radius: 15px;
         }
 
-        .uakino-loading { color: #fff; font-size: 1.2rem; text-align: center; }
-        .uakino-error { color: #ff6b6b; padding: 20px; text-align: center; }
-        .uakino-iframe { width: 100%; height: 100%; border: none; }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: #4ecdc4;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -582,7 +631,10 @@
                     <div class="warning-box" id="iframeWarning" style="display: none;">🌐 IFrame — вбудовуємо будь-який сайт</div>
                     <div class="info-box" id="uakinoInfo" style="display: none;">
                         🎥 <strong>UAKino:</strong> Вставте посилання на фільм/серіал з uakino.best<br>
-                        <small>Безкоштовні проксі: allorigins.win, corsproxy.io</small>
+                        <small>Підтримка HLS/M3U8 потоків з повною синхронізацією</small>
+                    </div>
+                    <div class="success-box" id="uakinoSuccess" style="display: none;">
+                        ✅ <strong>HLS Потік знайдено!</strong> Відтворення через hls.js з повною синхронізацією
                     </div>
                     <div class="info-box" id="streamInfo" style="display: none;">📡 <strong>Стрім екрану:</strong> Поділіться екраном з усіма учасниками</div>
 
@@ -590,6 +642,11 @@
                         <input type="text" class="url-input" id="videoUrl" placeholder="Вставте посилання на відео...">
                         <button class="btn-primary" onclick="loadVideo()">▶ Завантажити</button>
                         <button class="btn-danger" onclick="clearVideo()">🗑️ Очистити</button>
+                    </div>
+                    
+                    <!-- Quality selector for UAKino -->
+                    <div class="quality-selector" id="qualitySelector" style="display: none;">
+                        <span style="color: #888; font-size: 0.9rem;">Якість:</span>
                     </div>
                     
                     <div class="video-container">
@@ -665,6 +722,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- HLS.js для підтримки M3U8 потоків -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 
     <script>
         // Firebase Config
@@ -682,9 +741,7 @@
         const database = firebase.database();
 
         // === БЕЗКОШТОВНІ CORS ПРОКСІ ===
-        // Додайте свій Cloudflare Worker перший для найкращої стабільності
         const CORS_PROXIES = [
-            // 'https://dark-art-2e58uakino-proxy.carbonsrv.workers.dev/?url=', // ← РОЗКОМЕНТУЙТЕ ПІСЛЯ СТВОРЕННЯ
             'https://api.allorigins.win/raw?url=',
             'https://corsproxy.io/?',
             'https://api.codetabs.com/v1/proxy?quest=',
@@ -707,6 +764,8 @@
         let isSyncing = false, lastSyncTime = 0;
         let localStream = null;
         let usersListener = null, videoListener = null, chatListener = null;
+        let currentVideoSources = {}; // Для зберігання джерел відео (якість)
+        let hls = null; // HLS.js інстанс
 
         function generateId() { return Math.random().toString(36).substr(2, 9); }
         function generateRoomCode() { return Math.random().toString(36).substr(2, 6).toUpperCase(); }
@@ -808,6 +867,7 @@
             if (confirm('Вийти з кімнати?')) {
                 if (roomRef && userId) roomRef.child('users/' + userId).remove();
                 if (localStream) localStream.getTracks().forEach(track => track.stop());
+                if (hls) { hls.destroy(); hls = null; }
                 location.reload();
             }
         }
@@ -866,9 +926,13 @@
             document.querySelectorAll('.btn-type').forEach(btn => btn.classList.remove('active'));
             document.getElementById('btn-' + type).classList.add('active');
             
-            ['html5Info','youtubeWarning','iframeWarning','uakinoInfo','streamInfo'].forEach(id => 
+            ['html5Info','youtubeWarning','iframeWarning','uakinoInfo','uakinoSuccess','streamInfo'].forEach(id => 
                 document.getElementById(id).style.display = 'none'
             );
+            
+            // Сховати селектор якості
+            document.getElementById('qualitySelector').style.display = 'none';
+            document.getElementById('qualitySelector').innerHTML = '<span style="color: #888; font-size: 0.9rem;">Якість:</span>';
             
             if (type === 'html5') document.getElementById('html5Info').style.display = 'block';
             else if (type === 'youtube') document.getElementById('youtubeWarning').style.display = 'block';
@@ -881,7 +945,7 @@
             document.getElementById('limitedControls').style.display = (type !== 'html5' && type !== 'stream') ? 'flex' : 'none';
             
             const placeholders = {
-                html5: 'Вставте пряме посилання MP4...',
+                html5: 'Вставте пряме посилання MP4/M3U8...',
                 youtube: 'Вставте посилання YouTube...',
                 iframe: 'Вставте посилання на сайт...',
                 uakino: 'Вставте посилання uakino.best/...',
@@ -890,38 +954,198 @@
             document.getElementById('videoUrl').placeholder = placeholders[type];
         }
 
-        // === UAKino Парсер з безкоштовними проксі ===
+        // === ПОКРАЩЕНИЙ UAKino Парсер з підтримкою HLS ===
         async function parseUakino(url) {
             const match = url.match(/uakino\.best\/.*\/(\d+)-/);
             if (!match) throw new Error('Невірне посилання. Очікується: uakino.best/.../1234-film-name');
             
             const filmId = match[1];
-            let pageHtml = null; let usedProxy = null;
+            showNotification('🔍 Парсимо UAKino...');
             
+            let videoSources = {};
+            let usedProxy = null;
+            let playerUrl = null;
+            let masterPlaylist = null; // Головний M3U8 плейлист
+            
+            // 1. Отримуємо сторінку фільму
             for (const proxy of CORS_PROXIES) {
                 try {
                     const response = await fetch(proxy + encodeURIComponent(url), {
                         headers: { 'Accept': 'text/html,*/*' }
                     });
                     if (response.ok) {
-                        pageHtml = await response.text();
+                        const html = await response.text();
                         usedProxy = proxy;
+                        
+                        // Шукаємо плеєр
+                        const playerMatch = html.match(/data-src="([^"]*\/player\/[^"]*)"/i) || 
+                                           html.match(/src="([^"]*\/player\/[^"]*)"/i) ||
+                                           html.match(/player\.php\?id=(\d+)/i);
+                        
+                        if (playerMatch) {
+                            playerUrl = playerMatch[1].includes('http') ? playerMatch[1] : 'https://uakino.best' + playerMatch[1];
+                        } else {
+                            playerUrl = `https://uakino.best/player/${filmId}`;
+                        }
+                        
                         break;
                     }
                 } catch (e) { continue; }
             }
             
-            if (!pageHtml) throw new Error('Усі безкоштовні проксі недоступні. Спробуйте пізніше або додайте власний.');
+            // 2. Отримуємо плеєр і шукаємо M3U8
+            if (playerUrl) {
+                for (const proxy of CORS_PROXIES) {
+                    try {
+                        const response = await fetch(proxy + encodeURIComponent(playerUrl), {
+                            headers: { 'Accept': 'text/html,*/*' }
+                        });
+                        if (response.ok) {
+                            const html = await response.text();
+                            
+                            // Шукаємо M3U8 плейлисти
+                            const m3u8Matches = html.matchAll(/(https?:\/\/[^"'\s]+\.m3u8[^"'\s]*)/gi);
+                            const playlists = [];
+                            for (const match of m3u8Matches) {
+                                playlists.push(match[1]);
+                            }
+                            
+                            // Якщо знайшли плейлисти
+                            if (playlists.length > 0) {
+                                // Перевіряємо чи це master playlist (містить різні якості)
+                                masterPlaylist = playlists[0];
+                                
+                                // Спробуємо отримати master playlist і розпарсити якості
+                                try {
+                                    const playlistResponse = await fetch(proxy + encodeURIComponent(masterPlaylist));
+                                    if (playlistResponse.ok) {
+                                        const playlistContent = await playlistResponse.text();
+                                        
+                                        // Парсимо master M3U8
+                                        const lines = playlistContent.split('\n');
+                                        let currentQuality = 'auto';
+                                        
+                                        for (let i = 0; i < lines.length; i++) {
+                                            const line = lines[i].trim();
+                                            
+                                            // Шукаємо інформацію про якість
+                                            if (line.startsWith('#EXT-X-STREAM-INF')) {
+                                                const bandwidthMatch = line.match(/BANDWIDTH=(\d+)/);
+                                                const resolutionMatch = line.match(/RESOLUTION=(\d+x\d+)/);
+                                                
+                                                if (resolutionMatch) {
+                                                    currentQuality = resolutionMatch[1];
+                                                } else if (bandwidthMatch) {
+                                                    const bw = parseInt(bandwidthMatch[1]);
+                                                    if (bw > 4000000) currentQuality = '1080p';
+                                                    else if (bw > 2000000) currentQuality = '720p';
+                                                    else if (bw > 1000000) currentQuality = '480p';
+                                                    else currentQuality = '360p';
+                                                }
+                                                
+                                                // Наступний рядок - URL потоку
+                                                if (i + 1 < lines.length) {
+                                                    let streamUrl = lines[i + 1].trim();
+                                                    // Якщо відносний URL, робимо абсолютним
+                                                    if (streamUrl.startsWith('/')) {
+                                                        const baseUrl = new URL(masterPlaylist);
+                                                        streamUrl = baseUrl.origin + streamUrl;
+                                                    } else if (!streamUrl.startsWith('http')) {
+                                                        // Відносний шлях
+                                                        const baseUrl = masterPlaylist.substring(0, masterPlaylist.lastIndexOf('/') + 1);
+                                                        streamUrl = baseUrl + streamUrl;
+                                                    }
+                                                    videoSources[currentQuality] = streamUrl;
+                                                }
+                                            }
+                                        }
+                                        
+                                        // Якщо не знайшли окремі якості, використовуємо master playlist
+                                        if (Object.keys(videoSources).length === 0) {
+                                            videoSources['auto'] = masterPlaylist;
+                                        }
+                                    }
+                                } catch (e) {
+                                    // Якщо не вдалося розпарсити, використовуємо перший знайдений плейлист
+                                    videoSources['auto'] = masterPlaylist;
+                                }
+                            }
+                            
+                            // Шукаємо також MP4 файли (запасний варіант)
+                            const mp4Matches = html.matchAll(/(https?:\/\/[^"']+\.mp4[^"']*)/gi);
+                            for (const match of mp4Matches) {
+                                if (!videoSources['mp4']) {
+                                    videoSources['mp4'] = match[1];
+                                }
+                            }
+                            
+                            if (Object.keys(videoSources).length > 0) break;
+                        }
+                    } catch (e) { continue; }
+                }
+            }
             
-            // Шукаємо плеєр
-            const playerMatch = pageHtml.match(/data-src="([^"]*\/player\/[^"]*)"/i) || 
-                               pageHtml.match(/src="([^"]*\/player\/[^"]*)"/i) ||
-                               pageHtml.match(/player\.php\?id=(\d+)/i);
+            return { 
+                type: 'uakino', 
+                url, 
+                filmId, 
+                playerUrl, 
+                proxy: usedProxy,
+                videoSources,
+                hasDirectVideo: Object.keys(videoSources).length > 0,
+                isHLS: true
+            };
+        }
+
+        function selectQuality(quality, url) {
+            if (player && hls) {
+                const currentTime = player.currentTime;
+                const wasPlaying = !player.paused;
+                
+                // Завантажуємо нове джерело
+                hls.loadSource(url);
+                
+                // Відновлюємо позицію
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    player.currentTime = currentTime;
+                    if (wasPlaying) player.play();
+                });
+                
+                // Оновити активну кнопку
+                document.querySelectorAll('.quality-btn').forEach(btn => btn.classList.remove('active'));
+                event.target.classList.add('active');
+                
+                // Оновити в Firebase
+                roomRef.child('video').update({ 
+                    currentQuality: quality,
+                    currentUrl: url,
+                    updatedBy: userId, 
+                    updatedAt: firebase.database.ServerValue.TIMESTAMP 
+                });
+                
+                showNotification(`🎬 Якість: ${quality}`);
+            }
+        }
+
+        function createQualityButtons(sources) {
+            const container = document.getElementById('qualitySelector');
+            container.innerHTML = '<span style="color: #888; font-size: 0.9rem;">Якість:</span>';
             
-            let playerUrl = playerMatch ? (playerMatch[1].includes('http') ? playerMatch[1] : 'https://uakino.best' + playerMatch[1]) 
-                                        : `https://uakino.best/player/${filmId}`;
+            // Сортуємо якості від кращої до гіршої
+            const qualityOrder = { '1080p': 5, '720p': 4, '480p': 3, '360p': 2, 'auto': 1, 'mp4': 0 };
+            const qualities = Object.keys(sources).sort((a, b) => {
+                return (qualityOrder[b] || 0) - (qualityOrder[a] || 0);
+            });
             
-            return { type: 'uakino', url, filmId, playerUrl, proxy: usedProxy };
+            qualities.forEach((quality, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'quality-btn' + (index === 0 ? ' active' : '');
+                btn.textContent = quality;
+                btn.onclick = () => selectQuality(quality, sources[quality]);
+                container.appendChild(btn);
+            });
+            
+            container.style.display = 'flex';
         }
 
         async function loadVideo() {
@@ -931,42 +1155,164 @@
             try {
                 if (videoType === 'uakino') {
                     const data = await parseUakino(url);
-                    loadUakino(data);
+                    
+                    if (data.hasDirectVideo) {
+                        currentVideoSources = data.videoSources;
+                        const firstQuality = Object.keys(data.videoSources)[0];
+                        const firstUrl = data.videoSources[firstQuality];
+                        
+                        // Показуємо селектор якості
+                        createQualityButtons(data.videoSources);
+                        
+                        // Завантажуємо HLS відео
+                        loadHLS(firstUrl, true);
+                        
+                        // Показуємо повідомлення про успіх
+                        document.getElementById('uakinoSuccess').style.display = 'block';
+                        document.getElementById('uakinoInfo').style.display = 'none';
+                        
+                        // Зберігаємо в Firebase
+                        roomRef.child('video').set({
+                            type: 'uakino_hls',
+                            url: data.url,
+                            filmId: data.filmId,
+                            videoSources: data.videoSources,
+                            currentQuality: firstQuality,
+                            currentUrl: firstUrl,
+                            isHLS: true,
+                            updatedBy: userId,
+                            updatedAt: firebase.database.ServerValue.TIMESTAMP
+                        });
+                        
+                        addSystemMessage(`${userName} відкрив UAKino (HLS) 🎥`);
+                        showNotification('✅ HLS потік знайдено! Повна синхронізація активна');
+                    } else {
+                        throw new Error('Не вдалося отримати відео потік. Спробуйте інший фільм.');
+                    }
                 } else if (videoType === 'youtube') {
                     loadYouTube(url);
                 } else if (videoType === 'iframe') {
                     loadIframe(url);
                 } else if (videoType === 'html5') {
-                    loadHTML5(url);
+                    // Перевіряємо чи це M3U8
+                    if (url.includes('.m3u8')) {
+                        loadHLS(url, false);
+                    } else {
+                        loadHTML5(url, false);
+                    }
                 } else if (videoType === 'stream') {
                     showNotification('📡 Натисніть "Почати стрім"', 'error');
                 }
             } catch (err) {
                 showNotification('❌ ' + err.message, 'error');
-                if (videoType === 'uakino' && confirm('Парсинг не вдався. Відкрити як звичайний iframe?')) {
-                    loadIframe(url);
-                }
+                console.error('Помилка завантаження:', err);
             }
         }
 
-        function loadUakino(data) {
+        function loadHLS(url, isUakino = false) {
             const container = document.getElementById('videoPlayer');
-            container.innerHTML = `<div class="uakino-player"><div class="uakino-loading"><div style="font-size: 3rem; margin-bottom: 20px;">🎬</div><div>Завантаження...</div></div></div>`;
+            container.innerHTML = `<video id="html5Video" controls style="width:100%; height:100%;" crossorigin="anonymous"></video>`;
+            player = document.getElementById('html5Video');
             
-            const proxyUrl = data.proxy + encodeURIComponent(data.playerUrl);
-            setTimeout(() => {
-                container.innerHTML = `<iframe src="${proxyUrl}" class="uakino-iframe" allowfullscreen sandbox="allow-same-origin allow-scripts allow-presentation"></iframe>`;
-            }, 500);
+            // Прибираємо старий HLS якщо є
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
             
-            roomRef.child('video').set({
-                type: 'uakino', url: data.url, filmId: data.filmId,
-                playerUrl: data.playerUrl, proxy: data.proxy,
-                updatedBy: userId, updatedAt: firebase.database.ServerValue.TIMESTAMP
-            });
+            // Перевіряємо підтримку HLS нативно (Safari)
+            if (player.canPlayType('application/vnd.apple.mpegurl')) {
+                player.src = url;
+                setupPlayerEvents(isUakino);
+            } else if (Hls.isSupported()) {
+                // Використовуємо hls.js
+                hls = new Hls({
+                    debug: false,
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    backBufferLength: 90
+                });
+                
+                hls.loadSource(url);
+                hls.attachMedia(player);
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    updateSyncStatus('HLS Готово ✅', 'success');
+                    updateTimeDisplay();
+                });
+                
+                hls.on(Hls.Events.ERROR, function(event, data) {
+                    if (data.fatal) {
+                        switch(data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                console.error('HLS Network error:', data);
+                                showNotification('⚠️ Помилка мережі. Спробуйте іншу якість.', 'error');
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                console.error('HLS Media error:', data);
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                console.error('HLS Fatal error:', data);
+                                showNotification('❌ Помилка відтворення', 'error');
+                                break;
+                        }
+                    }
+                });
+                
+                setupPlayerEvents(isUakino);
+            } else {
+                showNotification('❌ Ваш браузер не підтримує HLS', 'error');
+                return;
+            }
             
-            updateSyncStatus('UAKino (обмежено)', 'warning');
-            addSystemMessage(`${userName} відкрив UAKino 🎥`);
-            showNotification('🎬 UAKino завантажено!');
+            // Показуємо контроли
+            document.getElementById('videoControls').style.display = 'flex';
+            document.getElementById('limitedControls').style.display = 'none';
+            
+            if (!isUakino) {
+                roomRef.child('video').set({ 
+                    type: 'hls', 
+                    url, 
+                    currentTime: 0, 
+                    isPlaying: false, 
+                    updatedBy: userId, 
+                    updatedAt: firebase.database.ServerValue.TIMESTAMP 
+                });
+                addSystemMessage(`${userName} завантажив HLS потік 🎥`);
+            }
+        }
+
+        function setupPlayerEvents(isUakino) {
+            if (!player) return;
+            
+            player.oncanplay = () => { 
+                updateSyncStatus('Готово ✅', 'success'); 
+                updateTimeDisplay(); 
+            };
+            
+            player.onplay = () => { 
+                if (!isSyncing) broadcastState(); 
+            };
+            
+            player.onpause = () => { 
+                if (!isSyncing) broadcastState(); 
+            };
+            
+            player.ontimeupdate = () => {
+                updateTimeDisplay();
+                if (Date.now() - lastSyncTime > 2000 && !player.paused) { 
+                    broadcastState(); 
+                    lastSyncTime = Date.now(); 
+                }
+            };
+            
+            player.onerror = (e) => {
+                console.error('Помилка відео:', e);
+                if (isUakino) {
+                    showNotification('⚠️ Помилка завантаження. Спробуйте іншу якість.', 'error');
+                }
+            };
         }
 
         function loadYouTube(url) {
@@ -984,27 +1330,42 @@
             addSystemMessage(`${userName} відкрив сайт 🌐`);
         }
 
-        function loadHTML5(url) {
+        function loadHTML5(url, isUakino = false) {
             const container = document.getElementById('videoPlayer');
-            container.innerHTML = `<video id="html5Video" controls style="width:100%; height:100%;"></video>`;
+            container.innerHTML = `<video id="html5Video" controls style="width:100%; height:100%;" crossorigin="anonymous"></video>`;
             player = document.getElementById('html5Video');
             player.src = url;
+            setupPlayerEvents(isUakino);
             
-            player.oncanplay = () => { updateSyncStatus('Готово ✅', 'success'); updateTimeDisplay(); };
-            player.onplay = () => { if (!isSyncing) broadcastState(); };
-            player.onpause = () => { if (!isSyncing) broadcastState(); };
-            player.ontimeupdate = () => {
-                updateTimeDisplay();
-                if (Date.now() - lastSyncTime > 2000 && !player.paused) { broadcastState(); lastSyncTime = Date.now(); }
-            };
+            // Показуємо контроли
+            document.getElementById('videoControls').style.display = 'flex';
+            document.getElementById('limitedControls').style.display = 'none';
             
-            roomRef.child('video').set({ type: 'html5', url, currentTime: 0, isPlaying: false, updatedBy: userId, updatedAt: firebase.database.ServerValue.TIMESTAMP });
-            addSystemMessage(`${userName} завантажив відео 🎥`);
+            if (!isUakino) {
+                roomRef.child('video').set({ 
+                    type: 'html5', 
+                    url, 
+                    currentTime: 0, 
+                    isPlaying: false, 
+                    updatedBy: userId, 
+                    updatedAt: firebase.database.ServerValue.TIMESTAMP 
+                });
+                addSystemMessage(`${userName} завантажив відео 🎥`);
+            }
         }
 
         function clearVideo() {
             document.getElementById('videoPlayer').innerHTML = '';
             document.getElementById('videoUrl').value = '';
+            document.getElementById('qualitySelector').style.display = 'none';
+            document.getElementById('qualitySelector').innerHTML = '<span style="color: #888; font-size: 0.9rem;">Якість:</span>';
+            currentVideoSources = {};
+            
+            if (hls) {
+                hls.destroy();
+                hls = null;
+            }
+            
             updateSyncStatus('Очікування...', 'success');
             roomRef.child('video').set({ type: 'none', updatedBy: userId, updatedAt: firebase.database.ServerValue.TIMESTAMP });
             addSystemMessage(`${userName} очистив відео 🗑️`);
@@ -1040,20 +1401,18 @@
         function syncVideoState(state) {
             if (!state || state.type === 'none') {
                 document.getElementById('videoPlayer').innerHTML = '';
+                document.getElementById('qualitySelector').style.display = 'none';
+                if (hls) { hls.destroy(); hls = null; }
                 updateSyncStatus('Очікування...', 'success');
                 return;
             }
+            
             const container = document.getElementById('videoPlayer');
             
             if (state.type === 'youtube' && state.videoId) {
                 if (!container.querySelector('iframe')?.src.includes(state.videoId))
                     container.innerHTML = `<iframe width="100%" height="100%" src="https://www.youtube.com/embed/${state.videoId}" frameborder="0" allowfullscreen></iframe>`;
                 updateSyncStatus('YouTube від хоста', 'warning');
-            } else if (state.type === 'uakino' && state.playerUrl) {
-                const proxyUrl = state.proxy + encodeURIComponent(state.playerUrl);
-                if (!container.querySelector('iframe')?.src.includes(state.filmId))
-                    container.innerHTML = `<iframe src="${proxyUrl}" class="uakino-iframe" allowfullscreen sandbox="allow-same-origin allow-scripts"></iframe>`;
-                updateSyncStatus(`UAKino (ID: ${state.filmId})`, 'warning');
             } else if (state.type === 'iframe' && state.url) {
                 if (container.querySelector('iframe')?.src !== state.url)
                     container.innerHTML = `<iframe src="${state.url}" width="100%" height="100%" frameborder="0" allowfullscreen sandbox="allow-same-origin allow-scripts"></iframe>`;
@@ -1063,15 +1422,36 @@
                     container.innerHTML = `<div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; background:#000; color:#fff;"><div style="font-size:4rem; margin-bottom:20px;">🔴 LIVE</div><div>Хост веде стрім</div></div>`;
                     updateSyncStatus('🔴 Стрім від хоста', 'success');
                 }
+            } else if ((state.type === 'uakino_hls' || state.type === 'hls') && state.currentUrl) {
+                // HLS від UAKino або прямий M3U8
+                currentVideoSources = state.videoSources || {};
+                
+                // Створюємо кнопки якості
+                if (state.videoSources && Object.keys(state.videoSources).length > 0) {
+                    createQualityButtons(state.videoSources);
+                }
+                
+                if (!player || player.src !== state.currentUrl) {
+                    loadHLS(state.currentUrl, state.type === 'uakino_hls');
+                    
+                    // Відновлюємо позицію
+                    if (state.currentTime > 0 && player) {
+                        player.currentTime = state.currentTime;
+                    }
+                } else {
+                    isSyncing = true;
+                    if (Math.abs(player.currentTime - state.currentTime) > 2) player.currentTime = state.currentTime;
+                    if (state.isPlaying && player.paused) { player.play().catch(e => {}); updateSyncStatus('▶️ HLS', 'success'); }
+                    else if (!state.isPlaying && !player.paused) { player.pause(); updateSyncStatus('⏸️ HLS', 'success'); }
+                    setTimeout(() => isSyncing = false, 500);
+                }
             } else if (state.type === 'html5' && state.url) {
                 if (!player || player.src !== state.url) {
                     container.innerHTML = `<video id="html5Video" controls style="width:100%; height:100%;"></video>`;
                     player = document.getElementById('html5Video');
                     player.src = state.url;
+                    setupPlayerEvents(false);
                     player.oncanplay = () => { updateSyncStatus('Готово ✅', 'success'); if (state.currentTime > 0) player.currentTime = state.currentTime; };
-                    player.onplay = () => { if (!isSyncing) broadcastState(); };
-                    player.onpause = () => { if (!isSyncing) broadcastState(); };
-                    player.ontimeupdate = () => { updateTimeDisplay(); if (Date.now() - lastSyncTime > 2000 && !player.paused) { broadcastState(); lastSyncTime = Date.now(); }};
                 } else {
                     isSyncing = true;
                     if (Math.abs(player.currentTime - state.currentTime) > 2) player.currentTime = state.currentTime;
@@ -1083,34 +1463,47 @@
         }
 
         function broadcastState() {
-            if (!roomRef || videoType !== 'html5' || !player) return;
-            roomRef.child('video').update({ currentTime: player.currentTime, isPlaying: !player.paused, updatedBy: userId, updatedAt: firebase.database.ServerValue.TIMESTAMP });
+            if (!roomRef || !player) return;
+            
+            const update = { 
+                currentTime: player.currentTime, 
+                isPlaying: !player.paused, 
+                updatedBy: userId, 
+                updatedAt: firebase.database.ServerValue.TIMESTAMP 
+            };
+            
+            // Якщо це UAKino з HLS, зберігаємо також поточну якість
+            if (videoType === 'uakino' && currentVideoSources) {
+                update.currentUrl = hls ? hls.url : player.src;
+            }
+            
+            roomRef.child('video').update(update);
         }
 
         function videoAction(action) {
-            if (videoType !== 'html5' || !player) { showNotification('⚠️ Тільки для MP4', 'error'); return; }
+            if (!player) { showNotification('⚠️ Спочатку завантажте відео', 'error'); return; }
             if (action === 'play') { player.play(); updateSyncStatus('▶️ Відтворення', 'success'); }
             else if (action === 'pause') { player.pause(); updateSyncStatus('⏸️ Пауза', 'success'); }
             setTimeout(broadcastState, 100);
         }
 
         function seek(seconds) {
-            if (videoType !== 'html5' || !player) { showNotification('⚠️ Тільки для MP4', 'error'); return; }
+            if (!player) { showNotification('⚠️ Спочатку завантажте відео', 'error'); return; }
             player.currentTime += seconds; updateTimeDisplay(); setTimeout(broadcastState, 100);
         }
 
         function manualSeek(value) {
-            if (videoType !== 'html5' || !player) return;
+            if (!player) return;
             player.currentTime = (value / 1000) * player.duration; updateTimeDisplay();
         }
 
         function syncRequest() {
-            if (videoType !== 'html5') { showNotification('📺 Ручна синхронізація для цього типу'); return; }
+            if (!player) { showNotification('⚠️ Спочатку завантажте відео', 'error'); return; }
             broadcastState(); showNotification('🔄 Синхронізовано!'); addSystemMessage(`${userName} синхронізував 🔄`);
         }
 
         function updateTimeDisplay() {
-            if (!player || videoType !== 'html5') return;
+            if (!player) return;
             document.getElementById('timeDisplay').textContent = `${formatTime(player.currentTime || 0)} / ${formatTime(player.duration || 0)}`;
             if (player.duration) document.getElementById('progressBar').value = (player.currentTime / player.duration) * 1000;
         }
@@ -1172,6 +1565,7 @@
         window.onbeforeunload = function() {
             if (roomRef && userId) roomRef.child('users/' + userId).remove();
             if (localStream) localStream.getTracks().forEach(track => track.stop());
+            if (hls) hls.destroy();
         };
     </script>
 </body>

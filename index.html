@@ -717,6 +717,27 @@
             margin: 10px 0;
             display: none;
         }
+
+        /* PlayerJS стилі */
+        .playerjs-wrapper {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        .playerjs-wrapper > div {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .playerjs-error {
+            background: rgba(0,0,0,0.8);
+            color: #ff6b6b;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px;
+        }
     </style>
 </head>
 <body>
@@ -784,6 +805,7 @@
                         <button class="btn-type btn-super" onclick="setVideoType('iframe-sync')" id="btn-iframe-sync">🌟 СУПЕР-IFRAME</button>
                         <button class="btn-type" onclick="setVideoType('iframe')" id="btn-iframe">🌐 Звичайний IFrame</button>
                         <button class="btn-type" onclick="setVideoType('stream')" id="btn-stream">📡 Стрім екрану</button>
+                        <button class="btn-type btn-super" onclick="setVideoType('playerjs')" id="btn-playerjs">🎯 PlayerJS HLS</button>
                     </div>
 
                     <div id="videoInfoBox" class="info-box">
@@ -839,6 +861,16 @@
                             📺 Обмежений режим: керування недоступне
                         </div>
                     </div>
+
+                    <div class="controls" id="playerjsControls" style="display: none;">
+                        <button class="btn-secondary" onclick="playerjsAction('play')">▶ Play</button>
+                        <button class="btn-secondary" onclick="playerjsAction('pause')">⏸ Pause</button>
+                        <button class="btn-secondary" onclick="playerjsSeek(-10)">⏪ -10с</button>
+                        <span class="time-display" id="playerjsTimeDisplay">00:00 / 00:00</span>
+                        <input type="range" id="playerjsProgress" min="0" max="1000" value="0" oninput="playerjsManualSeek(this.value)">
+                        <button class="btn-secondary" onclick="playerjsSeek(10)">+10с ⏩</button>
+                        <button class="btn-secondary" onclick="syncRequest()">🔄 Синхронізувати</button>
+                    </div>
                 </div>
             </div>
 
@@ -884,11 +916,13 @@
         </div>
     </div>
 
-    <!-- Firebase SDK -->
+    <!-- Підключення бібліотек -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script src="https://playerjs.com/api/playerjs.js"></script>
 
     <script>
         // 🔥 FIREBASE CONFIG
@@ -953,6 +987,11 @@
         let iframeChecker = null;
         let currentIframe = null;
         let markersList = [];
+
+        // Змінні для PlayerJS
+        let playerjsInstance = null;
+        let playerjsSyncInterval = null;
+        let playerjsLastTime = 0;
 
         function generateId() { return Math.random().toString(36).substr(2, 9); }
         function generateRoomCode() { return Math.random().toString(36).substr(2, 6).toUpperCase(); }
@@ -1136,6 +1175,7 @@
             const superControls = document.getElementById('superControls');
             const streamControls = document.getElementById('streamControls');
             const limitedControls = document.getElementById('limitedControls');
+            const playerjsControls = document.getElementById('playerjsControls');
             const streamOverlay = document.getElementById('streamOverlay');
             const markersBar = document.getElementById('markersBar');
             
@@ -1144,6 +1184,7 @@
             superControls.style.display = 'none';
             streamControls.style.display = 'none';
             limitedControls.style.display = 'none';
+            playerjsControls.style.display = 'none';
             streamOverlay.classList.add('hidden');
             markersBar.style.display = 'none';
             urlGroup.style.display = 'flex';
@@ -1176,11 +1217,19 @@
                 streamOverlay.classList.remove('hidden');
                 checkActiveStream();
             }
+            else if (type === 'playerjs') {
+                infoBox.innerHTML = '🎯 <strong>PlayerJS HLS:</strong> Відтворення HLS потоків з повною синхронізацією!';
+                infoBox.classList.add('super-info');
+                playerjsControls.style.display = 'flex';
+                document.getElementById('videoUrl').placeholder = 'https://ashdi.vip/video15/2/new/zootopia.2.2025.1080p.it.webdl.dd5.1.h.264spilno_232851/hls/1080/BKaKlHaPlvtanhH+BQ==/index.m3u8 або інший HLS потік';
+            }
             
             // Скидаємо плеєр
             document.getElementById('videoPlayer').innerHTML = '';
             if (syncInterval) clearInterval(syncInterval);
             if (iframeChecker) clearInterval(iframeChecker);
+            if (playerjsSyncInterval) clearInterval(playerjsSyncInterval);
+            if (playerjsInstance) playerjsInstance = null;
         }
 
         function loadVideo() {
@@ -1191,6 +1240,7 @@
             else if (videoType === 'iframe') loadIframe(url);
             else if (videoType === 'iframe-sync') loadIframeWithSync(url);
             else if (videoType === 'html5') loadHTML5(url);
+            else if (videoType === 'playerjs') loadPlayerJS(url);
         }
 
         function clearVideo() {
@@ -1208,6 +1258,14 @@
             }
             
             addSystemMessage(`${userName} очистив відео 🗑️`);
+            
+            if (playerjsInstance) {
+                playerjsInstance = null;
+            }
+            if (playerjsSyncInterval) {
+                clearInterval(playerjsSyncInterval);
+                playerjsSyncInterval = null;
+            }
         }
 
         function loadYouTube(url) {
@@ -1285,6 +1343,283 @@
             });
             
             addSystemMessage(`${userName} завантажив відео 🎥`);
+        }
+
+        // ========== PLAYERJS ДЛЯ HLS ПОТОКІВ ==========
+        function loadPlayerJS(url) {
+            const container = document.getElementById('videoPlayer');
+            
+            // Створюємо контейнер для PlayerJS
+            container.innerHTML = `
+                <div id="playerjs-container" style="width: 100%; height: 100%;"></div>
+            `;
+            
+            const playerContainer = document.getElementById('playerjs-container');
+            
+            try {
+                // Перевіряємо чи це HLS потік
+                if (url.includes('.m3u8')) {
+                    // Використовуємо HLS.js для кращої підтримки
+                    if (Hls.isSupported()) {
+                        const video = document.createElement('video');
+                        video.controls = true;
+                        video.style.width = '100%';
+                        video.style.height = '100%';
+                        playerContainer.appendChild(video);
+                        
+                        const hls = new Hls();
+                        hls.loadSource(url);
+                        hls.attachMedia(video);
+                        
+                        player = video;
+                        
+                        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                            video.play().catch(e => console.log('Autoplay blocked'));
+                        });
+                        
+                        video.onplay = () => { if (!isSyncing) broadcastPlayerJSState(); };
+                        video.onpause = () => { if (!isSyncing) broadcastPlayerJSState(); };
+                        video.ontimeupdate = () => {
+                            updatePlayerJSTimeDisplay();
+                            const now = Date.now();
+                            if (now - lastSyncTime > 2000 && !video.paused) {
+                                broadcastPlayerJSState();
+                                lastSyncTime = now;
+                            }
+                        };
+                        
+                        updateSyncStatus('HLS потік завантажено ✅', 'success');
+                        addSystemMessage(`${userName} завантажив HLS потік через HLS.js 📡`);
+                    } else {
+                        // Якщо HLS.js не підтримується, використовуємо PlayerJS
+                        playerjsInstance = new Playerjs({
+                            id: "playerjs-container",
+                            file: url,
+                            autoplay: true,
+                            controls: true,
+                            poster: "https://via.placeholder.com/1280x720?text=HLS+Stream",
+                            width: "100%",
+                            height: "100%"
+                        });
+                        
+                        setupPlayerJSListeners();
+                    }
+                } else {
+                    // Звичайне відео через PlayerJS
+                    playerjsInstance = new Playerjs({
+                        id: "playerjs-container",
+                        file: url,
+                        autoplay: true,
+                        controls: true,
+                        width: "100%",
+                        height: "100%"
+                    });
+                    
+                    setupPlayerJSListeners();
+                }
+                
+                roomRef.child('video').set({
+                    type: 'playerjs',
+                    url: url,
+                    currentTime: 0,
+                    isPlaying: false,
+                    updatedBy: userId,
+                    updatedAt: firebase.database.ServerValue.TIMESTAMP
+                });
+                
+            } catch (error) {
+                console.error('Помилка PlayerJS:', error);
+                container.innerHTML = `
+                    <div class="playerjs-error">
+                        ❌ Помилка завантаження відео<br>
+                        <small>${error.message}</small>
+                        <button class="btn-secondary" onclick="retryPlayerJS('${url}')" style="margin-top: 10px;">🔄 Спробувати знову</button>
+                    </div>
+                `;
+            }
+            
+            // Запускаємо синхронізацію для PlayerJS
+            startPlayerJSSync();
+        }
+
+        function setupPlayerJSListeners() {
+            if (!playerjsInstance) return;
+            
+            // PlayerJS події
+            playerjsInstance.on('play', () => {
+                if (!isSyncing) broadcastPlayerJSState();
+                document.getElementById('playerjsTimeDisplay').innerHTML = '▶ Відтворення';
+            });
+            
+            playerjsInstance.on('pause', () => {
+                if (!isSyncing) broadcastPlayerJSState();
+                document.getElementById('playerjsTimeDisplay').innerHTML = '⏸ Пауза';
+            });
+            
+            playerjsInstance.on('timeupdate', (time) => {
+                if (!isSyncing) {
+                    const now = Date.now();
+                    if (now - lastSyncTime > 2000) {
+                        broadcastPlayerJSState();
+                        lastSyncTime = now;
+                    }
+                }
+            });
+            
+            updateSyncStatus('PlayerJS готовий ✅', 'success');
+            addSystemMessage(`${userName} завантажив відео через PlayerJS 🎯`);
+        }
+
+        function retryPlayerJS(url) {
+            loadPlayerJS(url);
+        }
+
+        function startPlayerJSSync() {
+            if (playerjsSyncInterval) clearInterval(playerjsSyncInterval);
+            
+            playerjsSyncInterval = setInterval(() => {
+                if (!player || videoType !== 'playerjs') return;
+                
+                try {
+                    let currentTime = 0;
+                    let duration = 0;
+                    
+                    if (playerjsInstance && playerjsInstance.getTime) {
+                        currentTime = playerjsInstance.getTime();
+                        duration = playerjsInstance.getDuration() || 0;
+                    } else if (player && player.currentTime !== undefined) {
+                        currentTime = player.currentTime;
+                        duration = player.duration || 0;
+                    }
+                    
+                    updatePlayerJSTimeDisplay(currentTime, duration);
+                    
+                    // Синхронізація
+                    if (!isHost && !isSyncing && Math.abs(currentTime - playerjsLastTime) > 3) {
+                        syncToPlayerJSTime(playerjsLastTime);
+                    }
+                    
+                } catch (e) {
+                    console.log('Помилка синхронізації PlayerJS:', e);
+                }
+            }, 2000);
+        }
+
+        function updatePlayerJSTimeDisplay(currentTime, duration) {
+            const display = document.getElementById('playerjsTimeDisplay');
+            const progress = document.getElementById('playerjsProgress');
+            
+            if (currentTime !== undefined && duration) {
+                display.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
+                progress.value = (currentTime / duration) * 1000;
+            }
+        }
+
+        function playerjsAction(action) {
+            if (!player && !playerjsInstance) return;
+            
+            try {
+                if (playerjsInstance) {
+                    if (action === 'play') playerjsInstance.play();
+                    else if (action === 'pause') playerjsInstance.pause();
+                } else if (player) {
+                    if (action === 'play') player.play();
+                    else if (action === 'pause') player.pause();
+                }
+                
+                setTimeout(broadcastPlayerJSState, 100);
+            } catch (e) {
+                console.error('Помилка керування PlayerJS:', e);
+            }
+        }
+
+        function playerjsSeek(seconds) {
+            if (!player && !playerjsInstance) return;
+            
+            try {
+                let currentTime = 0;
+                if (playerjsInstance && playerjsInstance.getTime) {
+                    currentTime = playerjsInstance.getTime();
+                    playerjsInstance.setTime(currentTime + seconds);
+                } else if (player) {
+                    player.currentTime += seconds;
+                }
+                
+                setTimeout(broadcastPlayerJSState, 100);
+            } catch (e) {
+                console.error('Помилка перемотки PlayerJS:', e);
+            }
+        }
+
+        function playerjsManualSeek(value) {
+            if (!player && !playerjsInstance) return;
+            
+            try {
+                let duration = 0;
+                if (playerjsInstance && playerjsInstance.getDuration) {
+                    duration = playerjsInstance.getDuration();
+                    const time = (value / 1000) * duration;
+                    playerjsInstance.setTime(time);
+                } else if (player) {
+                    duration = player.duration;
+                    const time = (value / 1000) * duration;
+                    player.currentTime = time;
+                }
+            } catch (e) {
+                console.error('Помилка ручної перемотки PlayerJS:', e);
+            }
+        }
+
+        function broadcastPlayerJSState() {
+            if (!roomRef || videoType !== 'playerjs') return;
+            
+            try {
+                let currentTime = 0;
+                let isPlaying = false;
+                
+                if (playerjsInstance && playerjsInstance.getTime) {
+                    currentTime = playerjsInstance.getTime();
+                    // PlayerJS не має прямого методу для перевірки стану, використовуємо приблизний
+                    isPlaying = true; // Припускаємо що грає
+                } else if (player) {
+                    currentTime = player.currentTime;
+                    isPlaying = !player.paused;
+                }
+                
+                roomRef.child('video').update({
+                    type: 'playerjs',
+                    currentTime: currentTime,
+                    isPlaying: isPlaying,
+                    updatedBy: userId,
+                    updatedAt: firebase.database.ServerValue.TIMESTAMP
+                });
+                
+                playerjsLastTime = currentTime;
+            } catch (e) {
+                console.error('Помилка трансляції стану PlayerJS:', e);
+            }
+        }
+
+        function syncToPlayerJSTime(targetTime) {
+            if (!player && !playerjsInstance || Math.abs(playerjsLastTime - targetTime) < 2) return;
+            
+            isSeeking = true;
+            isSyncing = true;
+            
+            try {
+                if (playerjsInstance && playerjsInstance.setTime) {
+                    playerjsInstance.setTime(targetTime);
+                } else if (player) {
+                    player.currentTime = targetTime;
+                }
+            } catch (e) {
+                console.error('Помилка синхронізації PlayerJS:', e);
+            }
+            
+            setTimeout(() => { 
+                isSeeking = false;
+                isSyncing = false;
+            }, 1000);
         }
 
         // ========== СУПЕР-СИНХРОНІЗАЦІЯ ДЛЯ IFRAME ==========
@@ -1533,10 +1868,17 @@
         }
 
         function jumpToMarker(time) {
-            if (videoType !== 'iframe-sync' || !currentIframe) return;
+            if (videoType === 'playerjs') {
+                if (playerjsInstance && playerjsInstance.setTime) {
+                    playerjsInstance.setTime(time);
+                } else if (player) {
+                    player.currentTime = time;
+                }
+                showNotification(`⏩ Перехід до ${formatTime(time)}`);
+            } else if (videoType !== 'iframe-sync' || !currentIframe) return;
             
             try {
-                const iframeDoc = currentIframe.contentDocument || currentIframe.contentWindow.document;
+                const iframeDoc = currentIframe?.contentDocument || currentIframe?.contentWindow.document;
                 if (iframeDoc) {
                     const videos = iframeDoc.querySelectorAll('video');
                     if (videos.length > 0) {
@@ -1574,7 +1916,7 @@
             roomRef.child('chat').push({
                 userId: 'system',
                 userName: 'Система',
-                text: `💡 Підказка: створить маркер в ключовому місці для синхронізації!`,
+                text: `💡 Підказка: створіть маркер в ключовому місці для синхронізації!`,
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             });
         }
@@ -1589,13 +1931,41 @@
                 broadcastIframeTime(lastIframeTime);
                 addSystemMessage(`🔄 ${userName} ініціював глобальну синхронізацію`);
                 showNotification('🔄 Синхронізацію надіслано всім');
+            } else if (videoType === 'playerjs') {
+                broadcastPlayerJSState();
+                addSystemMessage(`🔄 ${userName} ініціював глобальну синхронізацію PlayerJS`);
+                showNotification('🔄 Синхронізацію надіслано всім');
             } else {
                 syncRequest();
             }
         }
 
         function syncVideoState(state) {
-            if (state.type === 'youtube' && state.videoId) {
+            if (state.type === 'playerjs') {
+                if (videoType !== 'playerjs') {
+                    setVideoType('playerjs');
+                    setTimeout(() => {
+                        if (state.url) {
+                            document.getElementById('videoUrl').value = state.url;
+                            loadPlayerJS(state.url);
+                        }
+                    }, 500);
+                }
+                
+                if (state.currentTime !== undefined && !isHost && !isSeeking) {
+                    syncToPlayerJSTime(state.currentTime);
+                }
+                
+                // Синхронізація стану відтворення
+                if (state.isPlaying !== undefined && player) {
+                    if (state.isPlaying && player.paused) {
+                        player.play().catch(e => console.log('Autoplay blocked'));
+                    } else if (!state.isPlaying && !player.paused) {
+                        player.pause();
+                    }
+                }
+            }
+            else if (state.type === 'youtube' && state.videoId) {
                 const container = document.getElementById('videoPlayer');
                 const iframe = container.querySelector('iframe');
                 if (!iframe || !iframe.src.includes(state.videoId)) {
@@ -1645,7 +2015,15 @@
         }
 
         function broadcastState() {
-            if (!roomRef || videoType !== 'html5') return;
+            if (!roomRef) return;
+            
+            if (videoType === 'playerjs') {
+                broadcastPlayerJSState();
+                return;
+            }
+            
+            if (videoType !== 'html5') return;
+            
             roomRef.child('video').update({
                 currentTime: player.currentTime,
                 isPlaying: !player.paused,
@@ -1655,6 +2033,11 @@
         }
 
         function videoAction(action) {
+            if (videoType === 'playerjs') {
+                playerjsAction(action);
+                return;
+            }
+            
             if (videoType !== 'html5' || !player) {
                 showNotification('⚠️ Керування тільки для MP4 відео', 'error');
                 return;
@@ -1670,6 +2053,11 @@
         }
 
         function seekRelative(seconds) {
+            if (videoType === 'playerjs') {
+                playerjsSeek(seconds);
+                return;
+            }
+            
             if (videoType === 'iframe-sync' && currentIframe) {
                 // Для iframe пропонуємо перемотку
                 const newTime = lastIframeTime + seconds;
@@ -1699,7 +2087,7 @@
         }
 
         function syncRequest() {
-            if (videoType === 'iframe-sync') {
+            if (videoType === 'iframe-sync' || videoType === 'playerjs') {
                 syncAllUsers();
                 return;
             }
@@ -2038,6 +2426,7 @@
             }
             if (syncInterval) clearInterval(syncInterval);
             if (iframeChecker) clearInterval(iframeChecker);
+            if (playerjsSyncInterval) clearInterval(playerjsSyncInterval);
         };
     </script>
 </body>

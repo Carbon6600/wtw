@@ -1,0 +1,5 @@
+.cursor/
+.continue/
+node_modules/
+.env
+*.log

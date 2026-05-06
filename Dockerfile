@@ -10,6 +10,6 @@ COPY api/main.py /app/api/main.py
 COPY index.html /app/index.html
 
 ENV PYTHONUNBUFFERED=1
-EXPOSE 80
+EXPOSE 10000
 
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-10000}"]

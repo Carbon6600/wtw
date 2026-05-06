@@ -34,6 +34,7 @@ _MEDIA_IN_TEXT_RE = re.compile(
     )""",
     re.IGNORECASE | re.VERBOSE,
 )
+_BROWSER_FIRST_HINTS = ("uakino", "uaserials", "rezka", "hdrezka", "kinogo")
 
 
 def _looks_like_media(url: str) -> str | None:
@@ -69,6 +70,11 @@ def _extract_media_urls_from_text(text: str, base_url: str) -> list[str]:
         if normalized:
             out.append(normalized)
     return out
+
+
+def _should_try_browser_first(url: str) -> bool:
+    u = url.lower()
+    return any(h in u for h in _BROWSER_FIRST_HINTS)
 
 
 def _extract_candidates_from_html(html: str, base_url: str) -> list[str]:
@@ -161,7 +167,7 @@ async def _extract_with_browser(page_url: str) -> str | None:
     Some sites expose the HLS playlist only after user interaction (Play).
     We emulate this in a headless browser and capture the first .m3u8 request.
     """
-    m3u8_url: str | None = None
+    media_url: str | None = None
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(
@@ -178,13 +184,27 @@ async def _extract_with_browser(page_url: str) -> str | None:
         page = await context.new_page()
 
         async def on_request(req):
-            nonlocal m3u8_url
+            nonlocal media_url
             u = req.url
-            if m3u8_url is None and ".m3u8" in u.lower():
-                m3u8_url = u
+            if media_url is None and _looks_like_media(u):
+                media_url = u
+
+        async def on_response(resp):
+            nonlocal media_url
+            if media_url is not None:
+                return
+            u = resp.url
+            ct = (resp.headers.get("content-type") or "").lower()
+            if _looks_like_media(u):
+                media_url = u
+                return
+            if any(x in ct for x in ["application/vnd.apple.mpegurl", "application/x-mpegurl", "video/", "application/octet-stream"]):
+                normalized = _normalize_url(u, page_url)
+                if normalized:
+                    media_url = normalized
 
         page.on("request", on_request)
-        page.on("response", lambda resp: None)  # keep hook for future debugging
+        page.on("response", on_response)
 
         try:
             await page.goto(page_url, wait_until="domcontentloaded", timeout=45000)
@@ -212,7 +232,7 @@ async def _extract_with_browser(page_url: str) -> str | None:
                     try:
                         await f.click(sel, timeout=1500)
                         await page.wait_for_timeout(800)
-                        if m3u8_url:
+                        if media_url:
                             return True
                     except Exception:
                         continue
@@ -220,7 +240,7 @@ async def _extract_with_browser(page_url: str) -> str | None:
 
             # main frame
             await try_click_in_frame(page)
-            if not m3u8_url:
+            if not media_url:
                 for frame in page.frames:
                     if frame == page.main_frame:
                         continue
@@ -229,7 +249,7 @@ async def _extract_with_browser(page_url: str) -> str | None:
                         break
 
             # keyboard fallback (space = play)
-            if not m3u8_url:
+            if not media_url:
                 try:
                     await page.keyboard.press("Space")
                 except Exception:
@@ -237,21 +257,21 @@ async def _extract_with_browser(page_url: str) -> str | None:
 
             # Wait a bit for network after clicks
             for _ in range(20):
-                if m3u8_url:
+                if media_url:
                     break
                 await page.wait_for_timeout(500)
 
-            # Last fallback: check rendered HTML for m3u8
-            if not m3u8_url:
+            # Last fallback: check rendered HTML for media URLs
+            if not media_url:
                 try:
                     content = await page.content()
-                    m = re.search(r"https?://[^\\s\"'<>]+\\.m3u8[^\\s\"'<>]*", content, flags=re.I)
+                    m = re.search(r"https?://[^\\s\"'<>]+\\.(?:m3u8|mp4|webm|mkv|mov)[^\\s\"'<>]*", content, flags=re.I)
                     if m:
-                        m3u8_url = m.group(0)
+                        media_url = m.group(0)
                 except Exception:
                     pass
 
-            return m3u8_url
+            return media_url
         finally:
             await context.close()
             await browser.close()
@@ -284,9 +304,39 @@ async def extract(req: ExtractRequest, x_w2w_legal_ack: str | None = Header(defa
 
     timeout = httpx.Timeout(20.0, connect=10.0)
     async with httpx.AsyncClient(headers=headers, timeout=timeout) as client:
+        # Browser-first for domains that frequently hide media behind JS/anti-bot flows.
+        if _should_try_browser_first(str(req.url)):
+            try:
+                browser_media = await _extract_with_browser(str(req.url))
+            except Exception:
+                browser_media = None
+            if browser_media:
+                kind = _looks_like_media(browser_media) or "m3u8"
+                return ExtractResponse(
+                    inputUrl=req.url,
+                    directUrl=browser_media,
+                    kind=kind,
+                    note="Captured media URL via browser-first extraction",
+                )
+
         try:
             html = await _fetch(client, str(req.url))
         except httpx.HTTPError as e:
+            # Common bot-protected pages reject direct HTTP client calls.
+            status = getattr(getattr(e, "response", None), "status_code", None)
+            if status in (401, 403, 429):
+                try:
+                    browser_media = await _extract_with_browser(str(req.url))
+                except Exception:
+                    browser_media = None
+                if browser_media:
+                    kind = _looks_like_media(browser_media) or "m3u8"
+                    return ExtractResponse(
+                        inputUrl=req.url,
+                        directUrl=browser_media,
+                        kind=kind,
+                        note=f"Captured media URL via browser fallback after HTTP {status}",
+                    )
             raise HTTPException(status_code=502, detail=f"Fetch failed: {e}") from e
 
         candidates = _extract_candidates_from_html(html, str(req.url))

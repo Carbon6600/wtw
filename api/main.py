@@ -1,6 +1,7 @@
 import re
 from pathlib import Path
 from typing import Any
+from urllib.parse import urljoin
 
 import httpx
 from bs4 import BeautifulSoup
@@ -26,6 +27,13 @@ class ExtractResponse(BaseModel):
 
 
 _URL_RE = re.compile(r"""https?://[^\s"'<>]+""", re.IGNORECASE)
+_MEDIA_IN_TEXT_RE = re.compile(
+    r"""(?:
+        https?:\/\/[^\s"'<>\\]+(?:\.m3u8|\.mp4|\.webm|\.mkv|\.mov)[^\s"'<>\\]*|
+        https?:\/\/[^\s"'<>\\]+\.m3u8[^\s"'<>\\]*
+    )""",
+    re.IGNORECASE | re.VERBOSE,
+)
 
 
 def _looks_like_media(url: str) -> str | None:
@@ -40,6 +48,27 @@ def _looks_like_media(url: str) -> str | None:
 def _is_youtube(url: str) -> bool:
     u = url.lower()
     return "youtube.com" in u or "youtu.be" in u
+
+
+def _normalize_url(candidate: str, base_url: str) -> str | None:
+    c = (candidate or "").strip().strip("'\"")
+    if not c:
+        return None
+    if c.startswith(("javascript:", "data:", "blob:", "#")):
+        return None
+    if c.startswith("\\/\\/"):
+        c = "https:" + c
+    c = c.replace("\\/", "/")
+    return urljoin(base_url, c)
+
+
+def _extract_media_urls_from_text(text: str, base_url: str) -> list[str]:
+    out: list[str] = []
+    for raw in _MEDIA_IN_TEXT_RE.findall(text or ""):
+        normalized = _normalize_url(raw, base_url)
+        if normalized:
+            out.append(normalized)
+    return out
 
 
 def _extract_candidates_from_html(html: str, base_url: str) -> list[str]:
@@ -65,6 +94,10 @@ def _extract_candidates_from_html(html: str, base_url: str) -> list[str]:
         txt = tag.string or ""
         if txt:
             candidates.extend(_URL_RE.findall(txt))
+            candidates.extend(_extract_media_urls_from_text(txt, base_url))
+        script_src = tag.get("src")
+        if script_src:
+            candidates.append(script_src)
 
     for tag in soup.select("[data-src],[data-file],[data-video],[data-hls],[data-url]"):
         for attr in ["data-src", "data-file", "data-video", "data-hls", "data-url"]:
@@ -76,11 +109,11 @@ def _extract_candidates_from_html(html: str, base_url: str) -> list[str]:
     seen = set()
     out: list[str] = []
     for c in candidates:
-        c = c.strip()
-        if not c or c in seen:
+        normalized = _normalize_url(c, base_url)
+        if not normalized or normalized in seen:
             continue
-        seen.add(c)
-        out.append(c)
+        seen.add(normalized)
+        out.append(normalized)
     return out
 
 
@@ -88,6 +121,39 @@ async def _fetch(client: httpx.AsyncClient, url: str) -> str:
     r = await client.get(url, follow_redirects=True)
     r.raise_for_status()
     return r.text
+
+
+async def _extract_from_external_scripts(client: httpx.AsyncClient, html: str, base_url: str) -> list[str]:
+    soup = BeautifulSoup(html, "html.parser")
+    script_urls: list[str] = []
+    for tag in soup.select("script[src]"):
+        src = tag.get("src")
+        if not src:
+            continue
+        normalized = _normalize_url(src, base_url)
+        if normalized:
+            script_urls.append(normalized)
+
+    seen = set()
+    candidates: list[str] = []
+    for script_url in script_urls[:8]:
+        if script_url in seen:
+            continue
+        seen.add(script_url)
+        try:
+            js_text = await _fetch(client, script_url)
+        except httpx.HTTPError:
+            continue
+        candidates.extend(_extract_media_urls_from_text(js_text, script_url))
+
+    deduped: list[str] = []
+    seen2 = set()
+    for c in candidates:
+        if c in seen2:
+            continue
+        seen2.add(c)
+        deduped.append(c)
+    return deduped
 
 
 async def _extract_with_browser(page_url: str) -> str | None:
@@ -224,6 +290,9 @@ async def extract(req: ExtractRequest, x_w2w_legal_ack: str | None = Header(defa
             raise HTTPException(status_code=502, detail=f"Fetch failed: {e}") from e
 
         candidates = _extract_candidates_from_html(html, str(req.url))
+        candidates.extend(await _extract_from_external_scripts(client, html, str(req.url)))
+        # Dedup after enriching from external scripts
+        candidates = list(dict.fromkeys(candidates))
 
         # Prefer direct media links first
         for c in candidates:
@@ -243,12 +312,14 @@ async def extract(req: ExtractRequest, x_w2w_legal_ack: str | None = Header(defa
             if any(k in ul for k in ["player", "embed", "iframe", "video", "stream"]):
                 likely_embed.append(u)
 
-        for u in likely_embed[:2]:
+        for u in likely_embed[:5]:
             try:
                 html2 = await _fetch(client, u)
             except httpx.HTTPError:
                 continue
             candidates2 = _extract_candidates_from_html(html2, u)
+            candidates2.extend(await _extract_from_external_scripts(client, html2, u))
+            candidates2 = list(dict.fromkeys(candidates2))
             for c in candidates2:
                 if _is_youtube(c):
                     continue

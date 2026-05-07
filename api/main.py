@@ -15,7 +15,19 @@ from openai import OpenAI
 
 
 # Ініціалізація OpenAI клієнта (якщо є API ключ)
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KEY") else None
+if os.getenv("OPENAI_API_KEY"):
+    try:
+        # Відключаємо проксі для уникнення конфліктів з OpenAI клієнтом
+        os.environ.pop("HTTP_PROXY", None)
+        os.environ.pop("HTTPS_PROXY", None)
+        os.environ.pop("http_proxy", None)
+        os.environ.pop("https_proxy", None)
+        openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    except Exception as e:
+        print(f"OpenAI client initialization failed: {e}")
+        openai_client = None
+else:
+    openai_client = None
 
 
 app = FastAPI(title="w2w extractor")

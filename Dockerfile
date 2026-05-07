@@ -8,6 +8,7 @@ RUN pip install --no-cache-dir -r /app/api/requirements.txt
 
 COPY api/main.py /app/api/main.py
 COPY index.html /app/index.html
+COPY static/ /app/static/
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 10000

@@ -7,12 +7,17 @@ import httpx
 from bs4 import BeautifulSoup
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, HttpUrl
 from playwright.async_api import async_playwright
 
 
 app = FastAPI(title="w2w extractor")
 INDEX_HTML_PATH = Path("/app/index.html")
+STATIC_DIR = Path("/app/static")
+
+# Serve frontend static assets (styles/app JS) under /static.
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 class ExtractRequest(BaseModel):

@@ -14,6 +14,9 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 scp -o BatchMode=yes -r api "${RemoteHost}:${RemotePath}/"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+scp -o BatchMode=yes -r static "${RemoteHost}:${RemotePath}/"
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
 ssh -o BatchMode=yes $RemoteHost "cd $RemotePath && docker compose up -d --build"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 

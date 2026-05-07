@@ -186,12 +186,12 @@ async def _extract_from_external_scripts(client: httpx.AsyncClient, html: str, b
     return deduped
 
 
-async def _extract_with_browser(page_url: str) -> str | None:
+async def _extract_with_browser(page_url: str) -> list[str]:
     """
     Some sites expose the HLS playlist only after user interaction (Play).
-    We emulate this in a headless browser and capture the first .m3u8 request.
+    We emulate this in a headless browser and capture all .m3u8/mp4 requests.
     """
-    media_url: str | None = None
+    media_urls: list[str] = []
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(
@@ -208,24 +208,20 @@ async def _extract_with_browser(page_url: str) -> str | None:
         page = await context.new_page()
 
         async def on_request(req):
-            nonlocal media_url
             u = req.url
-            if media_url is None and _looks_like_media(u):
-                media_url = u
+            if _looks_like_media(u) and u not in media_urls:
+                media_urls.append(u)
 
         async def on_response(resp):
-            nonlocal media_url
-            if media_url is not None:
-                return
             u = resp.url
             ct = (resp.headers.get("content-type") or "").lower()
-            if _looks_like_media(u):
-                media_url = u
+            if _looks_like_media(u) and u not in media_urls:
+                media_urls.append(u)
                 return
             if any(x in ct for x in ["application/vnd.apple.mpegurl", "application/x-mpegurl", "video/", "application/octet-stream"]):
                 normalized = _normalize_url(u, page_url)
-                if normalized:
-                    media_url = normalized
+                if normalized and normalized not in media_urls:
+                    media_urls.append(normalized)
 
         page.on("request", on_request)
         page.on("response", on_response)
@@ -286,16 +282,17 @@ async def _extract_with_browser(page_url: str) -> str | None:
                 await page.wait_for_timeout(500)
 
             # Last fallback: check rendered HTML for media URLs
-            if not media_url:
+            if not media_urls:
                 try:
                     content = await page.content()
-                    m = re.search(r"https?://[^\\s\"'<>]+\\.(?:m3u8|mp4|webm|mkv|mov)[^\\s\"'<>]*", content, flags=re.I)
-                    if m:
-                        media_url = m.group(0)
+                    matches = re.findall(r"https?://[^\\s\"'<>]+\\.(?:m3u8|mp4|webm|mkv|mov)[^\\s\"'<>]*", content, flags=re.I)
+                    for match in matches:
+                        if match not in media_urls:
+                            media_urls.append(match)
                 except Exception:
                     pass
 
-            return media_url
+            return media_urls
         finally:
             await context.close()
             await browser.close()
@@ -358,10 +355,10 @@ async def extract(request, x_w2w_legal_ack: str | None = Header(default=None)) -
         # Browser-first for domains that frequently hide media behind JS/anti-bot flows.
         if _should_try_browser_first(str(req.url)):
             try:
-                browser_media = await _extract_with_browser(str(req.url))
+                browser_media_list = await _extract_with_browser(str(req.url))
             except Exception:
-                browser_media = None
-            if browser_media:
+                browser_media_list = []
+            for browser_media in browser_media_list:
                 kind = _looks_like_media(browser_media) or "m3u8"
                 role = _infer_role(browser_media, str(req.url))
                 label = "Трейлер" if role == "trailer" else "Фільм"
@@ -374,10 +371,10 @@ async def extract(request, x_w2w_legal_ack: str | None = Header(default=None)) -
             status = getattr(getattr(e, "response", None), "status_code", None)
             if status in (401, 403, 429):
                 try:
-                    browser_media = await _extract_with_browser(str(req.url))
+                    browser_media_list = await _extract_with_browser(str(req.url))
                 except Exception:
-                    browser_media = None
-                if browser_media:
+                    browser_media_list = []
+                for browser_media in browser_media_list:
                     kind = _looks_like_media(browser_media) or "m3u8"
                     role = _infer_role(browser_media, str(req.url))
                     label = "Трейлер" if role == "trailer" else "Фільм"
@@ -432,10 +429,10 @@ async def extract(request, x_w2w_legal_ack: str | None = Header(default=None)) -
         # Last resort: emulate "Play" in a headless browser and capture media URL.
         if not sources:
             try:
-                browser_media = await _extract_with_browser(str(req.url))
+                browser_media_list = await _extract_with_browser(str(req.url))
             except Exception:
-                browser_media = None
-            if browser_media:
+                browser_media_list = []
+            for browser_media in browser_media_list:
                 kind = _looks_like_media(browser_media) or "m3u8"
                 role = _infer_role(browser_media, str(req.url))
                 label = "Трейлер" if role == "trailer" else "Фільм"

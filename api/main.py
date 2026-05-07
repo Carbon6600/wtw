@@ -445,7 +445,7 @@ async def serve_index() -> FileResponse:
 
 @app.post("/extract", response_model=ExtractResponse)
 @app.post("/api/extract", response_model=ExtractResponse)  # backwards compatible if hit directly
-async def extract(request, x_w2w_legal_ack: str | None = Header(default=None)) -> Any:
+async def extract(request: Request, x_w2w_legal_ack: str | None = Header(default=None)) -> Any:
     print(f"DEBUG: Raw request body: {await request.body()}")
     print(f"DEBUG: Headers: {dict(request.headers)}")
     

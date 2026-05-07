@@ -5,7 +5,7 @@ from urllib.parse import urljoin
 
 import httpx
 from bs4 import BeautifulSoup
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, HttpUrl
@@ -21,7 +21,10 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 
 class ExtractRequest(BaseModel):
-    url: HttpUrl
+    url: str
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class ExtractResponse(BaseModel):
@@ -310,12 +313,30 @@ async def serve_index() -> FileResponse:
 
 @app.post("/extract", response_model=ExtractResponse)
 @app.post("/api/extract", response_model=ExtractResponse)  # backwards compatible if hit directly
-async def extract(req: ExtractRequest, x_w2w_legal_ack: str | None = Header(default=None)) -> Any:
+async def extract(request, x_w2w_legal_ack: str | None = Header(default=None)) -> Any:
+    print(f"DEBUG: Raw request body: {await request.body()}")
+    print(f"DEBUG: Headers: {dict(request.headers)}")
+    
+    try:
+        req = await request.json()
+        print(f"DEBUG: Parsed JSON: {req}")
+    except Exception as e:
+        print(f"DEBUG: JSON parse error: {e}")
+        raise HTTPException(status_code=400, detail=f"JSON parse error: {e}")
+    
     if x_w2w_legal_ack != "1":
         raise HTTPException(
             status_code=403,
             detail="Legal acknowledgement required. Confirm lawful use before extracting media.",
         )
+
+    # Create ExtractRequest from dict
+    try:
+        extract_req = ExtractRequest(**req)
+        print(f"DEBUG: ExtractRequest created: {extract_req}")
+    except Exception as e:
+        print(f"DEBUG: ExtractRequest creation error: {e}")
+        raise HTTPException(status_code=400, detail=f"Request validation error: {e}")
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36",
@@ -342,7 +363,9 @@ async def extract(req: ExtractRequest, x_w2w_legal_ack: str | None = Header(defa
                 browser_media = None
             if browser_media:
                 kind = _looks_like_media(browser_media) or "m3u8"
-                add_source(browser_media, kind, "movie", "Фільм")
+                role = _infer_role(browser_media, str(req.url))
+                label = "Трейлер" if role == "trailer" else "Фільм"
+                add_source(browser_media, kind, role, label)
 
         try:
             html = await _fetch(client, str(req.url))
@@ -356,7 +379,9 @@ async def extract(req: ExtractRequest, x_w2w_legal_ack: str | None = Header(defa
                     browser_media = None
                 if browser_media:
                     kind = _looks_like_media(browser_media) or "m3u8"
-                    add_source(browser_media, kind, "movie", "Фільм")
+                    role = _infer_role(browser_media, str(req.url))
+                    label = "Трейлер" if role == "trailer" else "Фільм"
+                    add_source(browser_media, kind, role, label)
             else:
                 raise HTTPException(status_code=502, detail=f"Fetch failed: {e}") from e
             html = ""
@@ -412,7 +437,9 @@ async def extract(req: ExtractRequest, x_w2w_legal_ack: str | None = Header(defa
                 browser_media = None
             if browser_media:
                 kind = _looks_like_media(browser_media) or "m3u8"
-                add_source(browser_media, kind, "movie", "Фільм")
+                role = _infer_role(browser_media, str(req.url))
+                label = "Трейлер" if role == "trailer" else "Фільм"
+                add_source(browser_media, kind, role, label)
 
         if sources:
             primary = _pick_primary_source(sources)

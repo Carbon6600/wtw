@@ -1,3 +1,4 @@
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,11 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, HttpUrl
 from playwright.async_api import async_playwright
+from openai import OpenAI
+
+
+# Ініціалізація OpenAI клієнта (якщо є API ключ)
+openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KEY") else None
 
 
 app = FastAPI(title="w2w extractor")
@@ -45,6 +51,99 @@ _MEDIA_IN_TEXT_RE = re.compile(
 )
 _BROWSER_FIRST_HINTS = ("uakino", "uaserials", "rezka", "hdrezka", "kinogo")
 _TRAILER_HINTS = ("trailer", "trailer_", "trailers", "трейлер", "тизер", "teaser")
+
+
+async def _analyze_html_with_ai(html: str, page_url: str) -> list[str]:
+    """
+    Використовує AI для розумного аналізу HTML і пошуку плеєрів та джерел відео.
+    """
+    if not openai_client:
+        return []
+
+    try:
+        prompt = f"""
+        Проаналізуй цей HTML код сторінки {page_url} і знайди всі елементи, які можуть містити відео-плеєр або джерела відео.
+
+        Шукай:
+        1. iframe елементи з відео (YouTube, Vimeo, тощо)
+        2. video елементи з src атрибутами
+        3. div елементи з класами як 'player', 'video', 'jwplayer', 'flowplayer', 'plyr'
+        4. script елементи, які можуть містити конфігурацію плеєра
+        5. data-атрибути з відео URL
+        6. елементи з ID як 'player', 'video-player', 'movie-player'
+
+        Поверни JSON масив з об'єктами, що містять:
+        - selector: CSS селектор для елемента
+        - type: тип елемента ('iframe', 'video', 'player_div', 'script')
+        - description: короткий опис що це може бути
+
+        HTML:
+        {html[:8000]}  # обмежуємо розмір для токенів
+        """
+
+        response = await openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1,
+            max_tokens=1000
+        )
+
+        result = response.choices[0].message.content
+        # Парсимо JSON відповідь
+        import json
+        try:
+            suggestions = json.loads(result)
+            return [item.get('selector') for item in suggestions if item.get('selector')]
+        except json.JSONDecodeError:
+            # Якщо AI повернув не JSON, спробуємо витягти селектори з тексту
+            selectors = re.findall(r'["\']([^"\']*player[^"\']*|video[^"\']*|iframe[^"\']*)["\']', result)
+            return selectors[:10]  # обмежуємо кількість
+
+    except Exception as e:
+        print(f"AI analysis failed: {e}")
+        return []
+
+
+async def _get_player_interaction_plan(html: str, page_url: str) -> dict:
+    """
+    AI аналіз для розуміння як взаємодіяти з плеєром на сторінці.
+    """
+    if not openai_client:
+        return {"actions": []}
+
+    try:
+        prompt = f"""
+        Проаналізуй HTML сторінки {page_url} і створи план дій для отримання джерела відео з плеєра.
+
+        Шукай елементи, які потрібно натиснути або з якими потрібно взаємодіяти, щоб плеєр завантажив відео.
+
+        Поверни JSON з:
+        - actions: масив дій, кожна містить:
+          - type: "click", "wait", "scroll"
+          - selector: CSS селектор (для click)
+          - description: що робить ця дія
+
+        HTML:
+        {html[:6000]}
+        """
+
+        response = await openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1,
+            max_tokens=800
+        )
+
+        result = response.choices[0].message.content
+        import json
+        try:
+            return json.loads(result)
+        except json.JSONDecodeError:
+            return {"actions": []}
+
+    except Exception as e:
+        print(f"AI interaction plan failed: {e}")
+        return {"actions": []}
 
 
 def _looks_like_media(url: str) -> str | None:
@@ -206,6 +305,30 @@ async def _extract_with_browser(page_url: str) -> list[str]:
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
         )
         page = await context.new_page()
+
+        # AI-powered interaction plan
+        page_html = ""
+        try:
+            await page.goto(page_url, wait_until="domcontentloaded", timeout=15000)
+            page_html = await page.content()
+            interaction_plan = await _get_player_interaction_plan(page_html, page_url)
+            
+            # Execute AI-suggested actions
+            for action in interaction_plan.get("actions", [])[:5]:  # обмежуємо кількість дій
+                try:
+                    if action.get("type") == "click":
+                        await page.click(action["selector"], timeout=3000)
+                        await page.wait_for_timeout(1000)
+                    elif action.get("type") == "wait":
+                        await page.wait_for_timeout(2000)
+                    elif action.get("type") == "scroll":
+                        await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                        await page.wait_for_timeout(1000)
+                except Exception as e:
+                    print(f"AI action failed: {action} - {e}")
+                    continue
+        except Exception as e:
+            print(f"AI interaction setup failed: {e}")
 
         async def on_request(req):
             u = req.url
@@ -388,7 +511,26 @@ async def extract(request, x_w2w_legal_ack: str | None = Header(default=None)) -
         if html:
             candidates = _extract_candidates_from_html(html, str(req.url))
             candidates.extend(await _extract_from_external_scripts(client, html, str(req.url)))
-            # Dedup after enriching from external scripts
+            
+            # AI-powered analysis for better player detection
+            if openai_client and not candidates:
+                ai_selectors = await _analyze_html_with_ai(html, str(req.url))
+                soup = BeautifulSoup(html, "html.parser")
+                for selector in ai_selectors[:5]:  # обмежуємо кількість
+                    try:
+                        elements = soup.select(selector)
+                        for elem in elements[:3]:  # перевіряємо перші 3 елементи
+                            # Шукаємо src, data-src, тощо
+                            for attr in ['src', 'data-src', 'data-file', 'data-video', 'data-hls']:
+                                url = elem.get(attr)
+                                if url:
+                                    normalized = _normalize_url(url, str(req.url))
+                                    if normalized:
+                                        candidates.append(normalized)
+                    except Exception:
+                        continue
+            
+            # Dedup after enriching from external scripts and AI
             candidates = list(dict.fromkeys(candidates))
 
             for c in candidates:

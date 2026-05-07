@@ -24,6 +24,7 @@ class ExtractResponse(BaseModel):
     directUrl: str
     kind: str  # "m3u8" | "mp4" | "embed" | "unknown"
     note: str | None = None
+    sources: list[dict[str, str]] | None = None
 
 
 _URL_RE = re.compile(r"""https?://[^\s"'<>]+""", re.IGNORECASE)
@@ -35,6 +36,7 @@ _MEDIA_IN_TEXT_RE = re.compile(
     re.IGNORECASE | re.VERBOSE,
 )
 _BROWSER_FIRST_HINTS = ("uakino", "uaserials", "rezka", "hdrezka", "kinogo")
+_TRAILER_HINTS = ("trailer", "trailer_", "trailers", "трейлер", "тизер", "teaser")
 
 
 def _looks_like_media(url: str) -> str | None:
@@ -75,6 +77,20 @@ def _extract_media_urls_from_text(text: str, base_url: str) -> list[str]:
 def _should_try_browser_first(url: str) -> bool:
     u = url.lower()
     return any(h in u for h in _BROWSER_FIRST_HINTS)
+
+
+def _infer_role(url: str, context: str = "") -> str:
+    text = f"{url} {context}".lower()
+    if any(h in text for h in _TRAILER_HINTS):
+        return "trailer"
+    return "movie"
+
+
+def _pick_primary_source(sources: list[dict[str, str]]) -> dict[str, str]:
+    movie = next((s for s in sources if s.get("role") == "movie"), None)
+    if movie:
+        return movie
+    return sources[0]
 
 
 def _extract_candidates_from_html(html: str, base_url: str) -> list[str]:
@@ -303,6 +319,15 @@ async def extract(req: ExtractRequest, x_w2w_legal_ack: str | None = Header(defa
     }
 
     timeout = httpx.Timeout(20.0, connect=10.0)
+    sources: list[dict[str, str]] = []
+    seen_urls: set[str] = set()
+
+    def add_source(url: str, kind: str, role: str, label: str) -> None:
+        if url in seen_urls:
+            return
+        seen_urls.add(url)
+        sources.append({"url": url, "kind": kind, "role": role, "label": label})
+
     async with httpx.AsyncClient(headers=headers, timeout=timeout) as client:
         # Browser-first for domains that frequently hide media behind JS/anti-bot flows.
         if _should_try_browser_first(str(req.url)):
@@ -312,12 +337,7 @@ async def extract(req: ExtractRequest, x_w2w_legal_ack: str | None = Header(defa
                 browser_media = None
             if browser_media:
                 kind = _looks_like_media(browser_media) or "m3u8"
-                return ExtractResponse(
-                    inputUrl=req.url,
-                    directUrl=browser_media,
-                    kind=kind,
-                    note="Captured media URL via browser-first extraction",
-                )
+                add_source(browser_media, kind, "movie", "Фільм")
 
         try:
             html = await _fetch(client, str(req.url))
@@ -331,63 +351,83 @@ async def extract(req: ExtractRequest, x_w2w_legal_ack: str | None = Header(defa
                     browser_media = None
                 if browser_media:
                     kind = _looks_like_media(browser_media) or "m3u8"
-                    return ExtractResponse(
-                        inputUrl=req.url,
-                        directUrl=browser_media,
-                        kind=kind,
-                        note=f"Captured media URL via browser fallback after HTTP {status}",
-                    )
-            raise HTTPException(status_code=502, detail=f"Fetch failed: {e}") from e
+                    add_source(browser_media, kind, "movie", "Фільм")
+            else:
+                raise HTTPException(status_code=502, detail=f"Fetch failed: {e}") from e
+            html = ""
 
-        candidates = _extract_candidates_from_html(html, str(req.url))
-        candidates.extend(await _extract_from_external_scripts(client, html, str(req.url)))
-        # Dedup after enriching from external scripts
-        candidates = list(dict.fromkeys(candidates))
+        candidates: list[str] = []
+        likely_embed: list[str] = []
+        if html:
+            candidates = _extract_candidates_from_html(html, str(req.url))
+            candidates.extend(await _extract_from_external_scripts(client, html, str(req.url)))
+            # Dedup after enriching from external scripts
+            candidates = list(dict.fromkeys(candidates))
 
-        # Prefer direct media links first
-        for c in candidates:
-            if _is_youtube(c):
-                continue
-            kind = _looks_like_media(c)
-            if kind:
-                return ExtractResponse(inputUrl=req.url, directUrl=c, kind=kind, note="Found direct media URL in page HTML")
-
-        # If not found, try fetching one iframe that looks like player/embed
-        embed_candidates = [c for c in candidates if c.lower().startswith("http") and not _is_youtube(c)]
-
-        # Heuristic: pick iframe/embed-like URLs
-        likely_embed = []
-        for u in embed_candidates:
-            ul = u.lower()
-            if any(k in ul for k in ["player", "embed", "iframe", "video", "stream"]):
-                likely_embed.append(u)
-
-        for u in likely_embed[:5]:
-            try:
-                html2 = await _fetch(client, u)
-            except httpx.HTTPError:
-                continue
-            candidates2 = _extract_candidates_from_html(html2, u)
-            candidates2.extend(await _extract_from_external_scripts(client, html2, u))
-            candidates2 = list(dict.fromkeys(candidates2))
-            for c in candidates2:
+            for c in candidates:
                 if _is_youtube(c):
                     continue
                 kind = _looks_like_media(c)
                 if kind:
-                    return ExtractResponse(inputUrl=req.url, directUrl=c, kind=kind, note=f"Found media after following embed: {u}")
+                    role = _infer_role(c, str(req.url))
+                    label = "Трейлер" if role == "trailer" else "Фільм"
+                    add_source(c, kind, role, label)
 
-        # Last resort: emulate "Play" in a headless browser and capture .m3u8
-        # (works for sites where playlist URL appears only after user interaction)
-        try:
-            m3u8 = await _extract_with_browser(str(req.url))
-        except Exception:
-            m3u8 = None
-        if m3u8:
-            return ExtractResponse(inputUrl=req.url, directUrl=m3u8, kind="m3u8", note="Captured HLS playlist from browser network after Play")
+            # If not found, try fetching one iframe that looks like player/embed
+            embed_candidates = [c for c in candidates if c.lower().startswith("http") and not _is_youtube(c)]
+
+            # Heuristic: pick iframe/embed-like URLs
+            for u in embed_candidates:
+                ul = u.lower()
+                if any(k in ul for k in ["player", "embed", "iframe", "video", "stream", "trailer"]):
+                    likely_embed.append(u)
+
+            for u in likely_embed[:5]:
+                try:
+                    html2 = await _fetch(client, u)
+                except httpx.HTTPError:
+                    continue
+                candidates2 = _extract_candidates_from_html(html2, u)
+                candidates2.extend(await _extract_from_external_scripts(client, html2, u))
+                candidates2 = list(dict.fromkeys(candidates2))
+                for c in candidates2:
+                    if _is_youtube(c):
+                        continue
+                    kind = _looks_like_media(c)
+                    if kind:
+                        role = _infer_role(c, u)
+                        label = "Трейлер" if role == "trailer" else "Фільм"
+                        add_source(c, kind, role, label)
+
+        # Last resort: emulate "Play" in a headless browser and capture media URL.
+        if not sources:
+            try:
+                browser_media = await _extract_with_browser(str(req.url))
+            except Exception:
+                browser_media = None
+            if browser_media:
+                kind = _looks_like_media(browser_media) or "m3u8"
+                add_source(browser_media, kind, "movie", "Фільм")
+
+        if sources:
+            primary = _pick_primary_source(sources)
+            return ExtractResponse(
+                inputUrl=req.url,
+                directUrl=primary["url"],
+                kind=primary["kind"],
+                note="Found media candidates with role detection for movie/trailer",
+                sources=sources,
+            )
 
         if likely_embed:
-            return ExtractResponse(inputUrl=req.url, directUrl=likely_embed[0], kind="embed", note="No direct media found; returning likely embed/player URL")
+            fallback = likely_embed[0]
+            return ExtractResponse(
+                inputUrl=req.url,
+                directUrl=fallback,
+                kind="embed",
+                note="No direct media found; returning likely embed/player URL",
+                sources=[{"url": fallback, "kind": "embed", "role": _infer_role(fallback, str(req.url)), "label": "Плеєр"}],
+            )
 
         raise HTTPException(status_code=404, detail="No media URL candidates found")
 

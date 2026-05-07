@@ -920,6 +920,7 @@
                     <div id="videoInfoBox" class="info-box">
                         💡 Виберіть тип відео для перегляду
                     </div>
+                    <div id="extractSourceTabs" class="controls" style="display:none; margin-top: 8px;"></div>
 
                     <div id="legalGuardrailBox" class="legal-guardrail" style="display: none;">
                         <label for="legalConsentCheckbox">
@@ -1116,6 +1117,7 @@
         let playerjsHlsInstance = null;
         let playerjsDesiredQuality = "auto";
         let suppressQualityBroadcast = false;
+        let extractedSources = [];
 
         function generateId() { return Math.random().toString(36).substr(2, 9); }
         function generateRoomCode() { return Math.random().toString(36).substr(2, 6).toUpperCase(); }
@@ -1304,6 +1306,7 @@
             const markersBar = document.getElementById('markersBar');
             const legalGuardrailBox = document.getElementById('legalGuardrailBox');
             const legalConsentCheckbox = document.getElementById('legalConsentCheckbox');
+            const extractSourceTabs = document.getElementById('extractSourceTabs');
             
             // Скидаємо все
             videoControls.style.display = 'none';
@@ -1315,6 +1318,7 @@
             markersBar.style.display = 'none';
             urlGroup.style.display = 'flex';
             legalGuardrailBox.style.display = 'none';
+            extractSourceTabs.style.display = 'none';
             
             if (type === 'html5') {
                 infoBox.innerHTML = '💡 <strong>MP4/WebM/M3U8:</strong> Прямі посилання на відеофайли. Повна синхронізація!';
@@ -1389,6 +1393,59 @@
             else if (videoType === 'playerjs') loadPlayerJS(url);
         }
 
+        function choosePreferredExtractSource(sources) {
+            if (!Array.isArray(sources) || sources.length === 0) return null;
+            return sources.find(s => s.role === 'movie') || sources[0];
+        }
+
+        function renderExtractSourceTabs(sources, activeUrl) {
+            const tabs = document.getElementById('extractSourceTabs');
+            if (!Array.isArray(sources) || sources.length <= 1) {
+                tabs.style.display = 'none';
+                tabs.innerHTML = '';
+                return;
+            }
+
+            const buttons = sources.map((source, index) => {
+                const label = source.label || (source.role === 'trailer' ? 'Трейлер' : 'Фільм');
+                const activeClass = source.url === activeUrl ? 'style="background: rgba(78, 205, 196, 0.25); border-color: #4ecdc4;"' : '';
+                return `<button class="btn-secondary" ${activeClass} onclick="switchExtractSource(${index})">${label}</button>`;
+            }).join('');
+
+            tabs.innerHTML = `<span style="color:#bbb; margin-right:8px;">Джерело:</span>${buttons}`;
+            tabs.style.display = 'flex';
+        }
+
+        function loadExtractedSource(source) {
+            if (!source || !source.url) return;
+            const directUrl = source.url;
+            const kind = source.kind;
+
+            document.getElementById('videoUrl').value = directUrl;
+            renderExtractSourceTabs(extractedSources, directUrl);
+
+            if (kind === 'm3u8') {
+                setVideoType('playerjs');
+                loadPlayerJS(directUrl);
+            } else if (kind === 'mp4') {
+                setVideoType('html5');
+                loadHTML5(directUrl);
+            } else {
+                showNotification('⚠️ Прямого відео не знайдено — відкриваю плеєр/вбудовану сторінку', 'warning');
+                setVideoType('iframe');
+                loadIframe(directUrl);
+            }
+            renderExtractSourceTabs(extractedSources, directUrl);
+        }
+
+        function switchExtractSource(index) {
+            const source = extractedSources[index];
+            if (!source) return;
+            loadExtractedSource(source);
+            const label = source.label || (source.role === 'trailer' ? 'Трейлер' : 'Фільм');
+            showNotification(`🎬 Перемкнено: ${label}`, 'success');
+        }
+
         async function extractSiteAndLoad(pageUrl) {
             updateSyncStatus('🔎 Шукаю відео на сторінці...', 'syncing');
             const container = document.getElementById('videoPlayer');
@@ -1416,29 +1473,21 @@
                 const data = await res.json();
                 const directUrl = data.directUrl;
                 const kind = data.kind;
+                const responseSources = Array.isArray(data.sources) ? data.sources : [];
+                extractedSources = responseSources.length > 0
+                    ? responseSources
+                    : [{ url: directUrl, kind: kind || 'unknown', role: 'movie', label: 'Фільм' }];
 
-                if (!directUrl) throw new Error('Порожня відповідь від екстрактора');
+                const preferred = choosePreferredExtractSource(extractedSources);
+                if (!preferred || !preferred.url) throw new Error('Порожня відповідь від екстрактора');
 
-                // Вставляємо як звичайне відео в кімнаті
-                if (kind === 'm3u8') {
-                    document.getElementById('videoUrl').value = directUrl;
-                    setVideoType('playerjs');
-                    loadPlayerJS(directUrl);
-                } else if (kind === 'mp4') {
-                    document.getElementById('videoUrl').value = directUrl;
-                    setVideoType('html5');
-                    loadHTML5(directUrl);
-                } else {
-                    // fallback: відкриваємо embed як iframe
-                    showNotification('⚠️ Прямого відео не знайдено — відкриваю плеєр/вбудовану сторінку', 'warning');
-                    document.getElementById('videoUrl').value = directUrl;
-                    setVideoType('iframe');
-                    loadIframe(directUrl);
-                }
+                loadExtractedSource(preferred);
 
                 addSystemMessage(`${userName} витягнув відео з сайту 🔎`);
             } catch (e) {
                 console.error('extractSiteAndLoad error:', e);
+                extractedSources = [];
+                renderExtractSourceTabs([], '');
                 updateSyncStatus('❌ Не вдалося витягнути відео', 'offline');
                 showNotification('❌ Не вдалося витягнути відео з сайту. Спробуйте інший фільм або режим (стрім/iframe).', 'error');
             }
@@ -1447,6 +1496,8 @@
         function clearVideo() {
             document.getElementById('videoPlayer').innerHTML = '';
             document.getElementById('videoUrl').value = '';
+            extractedSources = [];
+            renderExtractSourceTabs([], '');
             updateSyncStatus('Очікування відео...', 'success');
             
             if (roomRef) {

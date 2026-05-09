@@ -14,20 +14,19 @@ from playwright.async_api import async_playwright
 from openai import OpenAI
 
 
-# Ініціалізація OpenAI клієнта (якщо є API ключ)
-if os.getenv("OPENAI_API_KEY"):
-    try:
-        # Відключаємо проксі для уникнення конфліктів з OpenAI клієнтом
-        os.environ.pop("HTTP_PROXY", None)
-        os.environ.pop("HTTPS_PROXY", None)
-        os.environ.pop("http_proxy", None)
-        os.environ.pop("https_proxy", None)
-        openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-    except Exception as e:
-        print(f"OpenAI client initialization failed: {e}")
-        openai_client = None
-else:
-    openai_client = None
+# Закоментовано для відключення AI функцій
+# if os.getenv("OPENAI_API_KEY"):
+#     try:
+#         os.environ.pop("HTTP_PROXY", None)
+#         os.environ.pop("HTTPS_PROXY", None)
+#         os.environ.pop("http_proxy", None)
+#         os.environ.pop("https_proxy", None)
+#         openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+#     except Exception as e:
+#         print(f"OpenAI client initialization failed: {e}")
+#         openai_client = None
+# else:
+#     openai_client = None
 
 
 app = FastAPI(title="w2w extractor")
@@ -304,6 +303,8 @@ async def _extract_with_browser(page_url: str) -> list[str]:
     """
     media_urls: list[str] = []
 
+    print(f"Starting browser extraction for URL: {page_url}")
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             headless=True,
@@ -313,27 +314,34 @@ async def _extract_with_browser(page_url: str) -> list[str]:
                 "--disable-blink-features=AutomationControlled",
             ],
         )
+        print("Browser launched successfully.")
         context = await browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36"
         )
         page = await context.new_page()
+        print("New browser context and page created.")
 
         # AI-powered interaction plan
         page_html = ""
         try:
             await page.goto(page_url, wait_until="domcontentloaded", timeout=15000)
+            print("Page loaded successfully.")
             page_html = await page.content()
             interaction_plan = await _get_player_interaction_plan(page_html, page_url)
-            
+            print(f"Interaction plan received: {interaction_plan}")
+
             # Execute AI-suggested actions
             for action in interaction_plan.get("actions", [])[:5]:  # обмежуємо кількість дій
                 try:
                     if action.get("type") == "click":
+                        print(f"Executing click action: {action}")
                         await page.click(action["selector"], timeout=3000)
                         await page.wait_for_timeout(1000)
                     elif action.get("type") == "wait":
+                        print("Executing wait action.")
                         await page.wait_for_timeout(2000)
                     elif action.get("type") == "scroll":
+                        print("Executing scroll action.")
                         await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
                         await page.wait_for_timeout(1000)
                 except Exception as e:
@@ -346,28 +354,32 @@ async def _extract_with_browser(page_url: str) -> list[str]:
             u = req.url
             if _looks_like_media(u) and u not in media_urls:
                 media_urls.append(u)
+                print(f"Media URL captured from request: {u}")
 
         async def on_response(resp):
             u = resp.url
             ct = (resp.headers.get("content-type") or "").lower()
             if _looks_like_media(u) and u not in media_urls:
                 media_urls.append(u)
+                print(f"Media URL captured from response: {u}")
                 return
             if any(x in ct for x in ["application/vnd.apple.mpegurl", "application/x-mpegurl", "video/", "application/octet-stream"]):
                 normalized = _normalize_url(u, page_url)
                 if normalized and normalized not in media_urls:
                     media_urls.append(normalized)
+                    print(f"Normalized media URL captured: {normalized}")
 
         page.on("request", on_request)
         page.on("response", on_response)
 
         try:
             await page.goto(page_url, wait_until="domcontentloaded", timeout=45000)
+            print("Page reloaded for media extraction.")
             # Give the page some time to load scripts/iframes
             try:
                 await page.wait_for_load_state("networkidle", timeout=15000)
             except Exception:
-                pass
+                print("Network idle state not reached.")
             await page.wait_for_timeout(1500)
 
             # Try clicking typical "Play" controls on page or within iframes
@@ -385,17 +397,19 @@ async def _extract_with_browser(page_url: str) -> list[str]:
             async def try_click_in_frame(f):
                 for sel in selectors:
                     try:
+                        print(f"Trying selector: {sel}")
                         await f.click(sel, timeout=1500)
                         await page.wait_for_timeout(800)
-                        if media_url:
+                        if media_urls:
                             return True
-                    except Exception:
+                    except Exception as e:
+                        print(f"Click failed for selector {sel}: {e}")
                         continue
                 return False
 
             # main frame
             await try_click_in_frame(page)
-            if not media_url:
+            if not media_urls:
                 for frame in page.frames:
                     if frame == page.main_frame:
                         continue
@@ -404,15 +418,16 @@ async def _extract_with_browser(page_url: str) -> list[str]:
                         break
 
             # keyboard fallback (space = play)
-            if not media_url:
+            if not media_urls:
                 try:
+                    print("Trying keyboard fallback (Space key).")
                     await page.keyboard.press("Space")
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"Keyboard fallback failed: {e}")
 
             # Wait a bit for network after clicks
             for _ in range(20):
-                if media_url:
+                if media_urls:
                     break
                 await page.wait_for_timeout(500)
 
@@ -424,17 +439,19 @@ async def _extract_with_browser(page_url: str) -> list[str]:
                     for match in matches:
                         if match not in media_urls:
                             media_urls.append(match)
-                except Exception:
-                    pass
+                            print(f"Media URL found in HTML content: {match}")
+                except Exception as e:
+                    print(f"Failed to extract media URLs from HTML content: {e}")
 
             return media_urls
         finally:
             await context.close()
             await browser.close()
+            print("Browser and context closed.")
 
 
 @app.get("/health")
-async def health() -> dict[str, str]:
+def health_check():
     return {"status": "ok"}
 
 
@@ -465,6 +482,7 @@ async def extract(request: Request, x_w2w_legal_ack: str | None = Header(default
     # Create ExtractRequest from dict
     try:
         extract_req = ExtractRequest(**req)
+        target_url = str(extract_req.url)
         print(f"DEBUG: ExtractRequest created: {extract_req}")
     except Exception as e:
         print(f"DEBUG: ExtractRequest creation error: {e}")
@@ -488,30 +506,30 @@ async def extract(request: Request, x_w2w_legal_ack: str | None = Header(default
 
     async with httpx.AsyncClient(headers=headers, timeout=timeout) as client:
         # Browser-first for domains that frequently hide media behind JS/anti-bot flows.
-        if _should_try_browser_first(str(req.url)):
+        if _should_try_browser_first(str(extract_req.url)):
             try:
-                browser_media_list = await _extract_with_browser(str(req.url))
+                browser_media_list = await _extract_with_browser(target_url)
             except Exception:
                 browser_media_list = []
             for browser_media in browser_media_list:
                 kind = _looks_like_media(browser_media) or "m3u8"
-                role = _infer_role(browser_media, str(req.url))
+                role = _infer_role(browser_media, target_url)
                 label = "Трейлер" if role == "trailer" else "Фільм"
                 add_source(browser_media, kind, role, label)
 
         try:
-            html = await _fetch(client, str(req.url))
+            html = await _fetch(client, target_url)
         except httpx.HTTPError as e:
             # Common bot-protected pages reject direct HTTP client calls.
             status = getattr(getattr(e, "response", None), "status_code", None)
             if status in (401, 403, 429):
                 try:
-                    browser_media_list = await _extract_with_browser(str(req.url))
+                    browser_media_list = await _extract_with_browser(target_url)
                 except Exception:
                     browser_media_list = []
                 for browser_media in browser_media_list:
                     kind = _looks_like_media(browser_media) or "m3u8"
-                    role = _infer_role(browser_media, str(req.url))
+                    role = _infer_role(browser_media, target_url)
                     label = "Трейлер" if role == "trailer" else "Фільм"
                     add_source(browser_media, kind, role, label)
             else:
@@ -521,12 +539,12 @@ async def extract(request: Request, x_w2w_legal_ack: str | None = Header(default
         candidates: list[str] = []
         likely_embed: list[str] = []
         if html:
-            candidates = _extract_candidates_from_html(html, str(req.url))
-            candidates.extend(await _extract_from_external_scripts(client, html, str(req.url)))
+            candidates = _extract_candidates_from_html(html, target_url)
+            candidates.extend(await _extract_from_external_scripts(client, html, target_url))
             
             # AI-powered analysis for better player detection
             if openai_client and not candidates:
-                ai_selectors = await _analyze_html_with_ai(html, str(req.url))
+                ai_selectors = await _analyze_html_with_ai(html, target_url)
                 soup = BeautifulSoup(html, "html.parser")
                 for selector in ai_selectors[:5]:  # обмежуємо кількість
                     try:
@@ -536,7 +554,7 @@ async def extract(request: Request, x_w2w_legal_ack: str | None = Header(default
                             for attr in ['src', 'data-src', 'data-file', 'data-video', 'data-hls']:
                                 url = elem.get(attr)
                                 if url:
-                                    normalized = _normalize_url(url, str(req.url))
+                                    normalized = _normalize_url(url, target_url)
                                     if normalized:
                                         candidates.append(normalized)
                     except Exception:
@@ -550,7 +568,7 @@ async def extract(request: Request, x_w2w_legal_ack: str | None = Header(default
                     continue
                 kind = _looks_like_media(c)
                 if kind:
-                    role = _infer_role(c, str(req.url))
+                    role = _infer_role(c, target_url)
                     label = "Трейлер" if role == "trailer" else "Фільм"
                     add_source(c, kind, role, label)
 
@@ -583,19 +601,19 @@ async def extract(request: Request, x_w2w_legal_ack: str | None = Header(default
         # Last resort: emulate "Play" in a headless browser and capture media URL.
         if not sources:
             try:
-                browser_media_list = await _extract_with_browser(str(req.url))
+                browser_media_list = await _extract_with_browser(target_url)
             except Exception:
                 browser_media_list = []
             for browser_media in browser_media_list:
                 kind = _looks_like_media(browser_media) or "m3u8"
-                role = _infer_role(browser_media, str(req.url))
+                role = _infer_role(browser_media, str(extract_req.url))
                 label = "Трейлер" if role == "trailer" else "Фільм"
                 add_source(browser_media, kind, role, label)
 
         if sources:
             primary = _pick_primary_source(sources)
             return ExtractResponse(
-                inputUrl=req.url,
+                inputUrl=extract_req.url,
                 directUrl=primary["url"],
                 kind=primary["kind"],
                 note="Found media candidates with role detection for movie/trailer",
@@ -605,11 +623,11 @@ async def extract(request: Request, x_w2w_legal_ack: str | None = Header(default
         if likely_embed:
             fallback = likely_embed[0]
             return ExtractResponse(
-                inputUrl=req.url,
+                inputUrl=extract_req.url,
                 directUrl=fallback,
                 kind="embed",
                 note="No direct media found; returning likely embed/player URL",
-                sources=[{"url": fallback, "kind": "embed", "role": _infer_role(fallback, str(req.url)), "label": "Плеєр"}],
+                sources=[{"url": fallback, "kind": "embed", "role": _infer_role(fallback, target_url), "label": "Плеєр"}],
             )
 
         raise HTTPException(status_code=404, detail="No media URL candidates found")

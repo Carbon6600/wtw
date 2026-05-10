@@ -28,6 +28,7 @@ from openai import OpenAI
 # else:
 #     openai_client = None
 
+openai_client = None
 
 app = FastAPI(title="w2w extractor")
 INDEX_HTML_PATH = Path("/app/index.html")
@@ -39,6 +40,7 @@ app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 class ExtractRequest(BaseModel):
     url: str
+    useAI: bool = False
 
     class Config:
         arbitrary_types_allowed = True
@@ -543,22 +545,25 @@ async def extract(request: Request, x_w2w_legal_ack: str | None = Header(default
             candidates.extend(await _extract_from_external_scripts(client, html, target_url))
             
             # AI-powered analysis for better player detection
-            if openai_client and not candidates:
-                ai_selectors = await _analyze_html_with_ai(html, target_url)
-                soup = BeautifulSoup(html, "html.parser")
-                for selector in ai_selectors[:5]:  # обмежуємо кількість
-                    try:
-                        elements = soup.select(selector)
-                        for elem in elements[:3]:  # перевіряємо перші 3 елементи
-                            # Шукаємо src, data-src, тощо
-                            for attr in ['src', 'data-src', 'data-file', 'data-video', 'data-hls']:
-                                url = elem.get(attr)
-                                if url:
-                                    normalized = _normalize_url(url, target_url)
-                                    if normalized:
-                                        candidates.append(normalized)
-                    except Exception:
-                        continue
+            if extract_req.useAI:
+                if openai_client and not candidates:
+                    ai_selectors = await _analyze_html_with_ai(html, target_url)
+                    soup = BeautifulSoup(html, "html.parser")
+                    for selector in ai_selectors[:5]:  # обмежуємо кількість
+                        try:
+                            elements = soup.select(selector)
+                            for elem in elements[:3]:  # перевіряємо перші 3 елементи
+                                # Шукаємо src, data-src, тощо
+                                for attr in ['src', 'data-src', 'data-file', 'data-video', 'data-hls']:
+                                    url = elem.get(attr)
+                                    if url:
+                                        normalized = _normalize_url(url, target_url)
+                                        if normalized:
+                                            candidates.append(normalized)
+                        except Exception:
+                            continue
+                else:
+                    print("AI requested but OpenAI client is not configured or media candidates already found.")
             
             # Dedup after enriching from external scripts and AI
             candidates = list(dict.fromkeys(candidates))

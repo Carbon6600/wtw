@@ -408,13 +408,14 @@
             `;
 
             try {
+                const useAI = document.getElementById('useAiCheckbox')?.checked || false;
                 const res = await fetch('/api/extract', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-W2W-Legal-Ack': '1'
                     },
-                    body: JSON.stringify({ url: pageUrl })
+                    body: JSON.stringify({ url: pageUrl, useAI })
                 });
                 if (!res.ok) {
                     const text = await res.text();

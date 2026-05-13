@@ -199,8 +199,8 @@ def _should_try_browser_first(url: str) -> bool:
     return any(h in u for h in _BROWSER_FIRST_HINTS)
 
 
-def _infer_role(url: str, context: str = "") -> str:
-    text = f"{url} {context}".lower()
+def _infer_role(url: str) -> str:
+    text = url.lower()
     if any(h in text for h in _TRAILER_HINTS):
         return "trailer"
     return "movie"
@@ -515,7 +515,7 @@ async def extract(request: Request, x_w2w_legal_ack: str | None = Header(default
                 browser_media_list = []
             for browser_media in browser_media_list:
                 kind = _looks_like_media(browser_media) or "m3u8"
-                role = _infer_role(browser_media, target_url)
+                role = _infer_role(browser_media)
                 label = "Трейлер" if role == "trailer" else "Фільм"
                 add_source(browser_media, kind, role, label)
 
@@ -531,7 +531,7 @@ async def extract(request: Request, x_w2w_legal_ack: str | None = Header(default
                     browser_media_list = []
                 for browser_media in browser_media_list:
                     kind = _looks_like_media(browser_media) or "m3u8"
-                    role = _infer_role(browser_media, target_url)
+                    role = _infer_role(browser_media)
                     label = "Трейлер" if role == "trailer" else "Фільм"
                     add_source(browser_media, kind, role, label)
             else:
@@ -573,7 +573,7 @@ async def extract(request: Request, x_w2w_legal_ack: str | None = Header(default
                     continue
                 kind = _looks_like_media(c)
                 if kind:
-                    role = _infer_role(c, target_url)
+                    role = _infer_role(c)
                     label = "Трейлер" if role == "trailer" else "Фільм"
                     add_source(c, kind, role, label)
 
@@ -599,7 +599,7 @@ async def extract(request: Request, x_w2w_legal_ack: str | None = Header(default
                         continue
                     kind = _looks_like_media(c)
                     if kind:
-                        role = _infer_role(c, u)
+                        role = _infer_role(c)
                         label = "Трейлер" if role == "trailer" else "Фільм"
                         add_source(c, kind, role, label)
 
@@ -611,9 +611,12 @@ async def extract(request: Request, x_w2w_legal_ack: str | None = Header(default
                 browser_media_list = []
             for browser_media in browser_media_list:
                 kind = _looks_like_media(browser_media) or "m3u8"
-                role = _infer_role(browser_media, str(extract_req.url))
+                role = _infer_role(browser_media)
                 label = "Трейлер" if role == "trailer" else "Фільм"
                 add_source(browser_media, kind, role, label)
+
+        # Sort sources to prioritize 'movie' role
+        sources.sort(key=lambda x: 0 if x.get("role") == "movie" else 1)
 
         if sources:
             primary = _pick_primary_source(sources)
@@ -632,7 +635,7 @@ async def extract(request: Request, x_w2w_legal_ack: str | None = Header(default
                 directUrl=fallback,
                 kind="embed",
                 note="No direct media found; returning likely embed/player URL",
-                sources=[{"url": fallback, "kind": "embed", "role": _infer_role(fallback, target_url), "label": "Плеєр"}],
+                sources=[{"url": fallback, "kind": "embed", "role": _infer_role(fallback), "label": "Плеєр"}],
             )
 
         raise HTTPException(status_code=404, detail="No media URL candidates found")

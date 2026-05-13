@@ -69,6 +69,38 @@
         let playerjsDesiredQuality = "auto";
         let suppressQualityBroadcast = false;
         let extractedSources = [];
+        let currentActiveSource = null;
+
+        function renderMediaTabs(sources) {
+            const mediaSelector = document.getElementById("mediaSelector");
+            mediaSelector.innerHTML = ""; // Очистити попередні кнопки
+
+            if (!Array.isArray(sources) || sources.length < 2) {
+                mediaSelector.style.display = "none";
+                return;
+            }
+
+            mediaSelector.style.display = "flex"; // Показати контейнер
+
+            sources.forEach((source, index) => {
+                const button = document.createElement("button");
+                button.className = "btn-secondary media-tab-btn";
+                button.textContent = source.label;
+                button.onclick = () => switchMediaSource(index);
+                if (currentActiveSource && currentActiveSource.url === source.url) {
+                    button.classList.add("active");
+                }
+                mediaSelector.appendChild(button);
+            });
+        }
+
+        function switchMediaSource(index) {
+            const source = extractedSources[index];
+            if (source) {
+                loadExtractedSource(source);
+                showNotification(`🎬 Перемкнено на: ${source.label}`, "success");
+            }
+        }
 
         function generateId() { return Math.random().toString(36).substr(2, 9); }
         function generateRoomCode() { return Math.random().toString(36).substr(2, 6).toUpperCase(); }
@@ -373,7 +405,8 @@
             const kind = source.kind;
 
             document.getElementById('videoUrl').value = directUrl;
-            renderExtractSourceTabs(extractedSources, directUrl);
+            currentActiveSource = source;
+            renderMediaTabs(extractedSources);
 
             if (kind === 'm3u8') {
                 setVideoType('playerjs');
@@ -433,13 +466,16 @@
                 const preferred = choosePreferredExtractSource(extractedSources);
                 if (!preferred || !preferred.url) throw new Error('Порожня відповідь від екстрактора');
 
+                currentActiveSource = preferred;
                 loadExtractedSource(preferred);
+                renderMediaTabs(extractedSources);
 
                 addSystemMessage(`${userName} витягнув відео з сайту 🔎`);
             } catch (e) {
                 console.error('extractSiteAndLoad error:', e);
                 extractedSources = [];
-                renderExtractSourceTabs([], '');
+                currentActiveSource = null;
+                renderMediaTabs([]);
                 updateSyncStatus('❌ Не вдалося витягнути відео', 'offline');
                 showNotification('❌ Не вдалося витягнути відео з сайту. Спробуйте інший фільм або режим (стрім/iframe).', 'error');
             }
@@ -449,7 +485,8 @@
             document.getElementById('videoPlayer').innerHTML = '';
             document.getElementById('videoUrl').value = '';
             extractedSources = [];
-            renderExtractSourceTabs([], '');
+            currentActiveSource = null;
+            renderMediaTabs([]);
             updateSyncStatus('Очікування відео...', 'success');
             
             if (roomRef) {

@@ -200,6 +200,7 @@ def _should_try_browser_first(url: str) -> bool:
 
 
 def _infer_role(url: str) -> str:
+    # Визначаємо роль лише за прямим посиланням
     text = url.lower()
     if any(h in text for h in _TRAILER_HINTS):
         return "trailer"
@@ -615,8 +616,8 @@ async def extract(request: Request, x_w2w_legal_ack: str | None = Header(default
                 label = "Трейлер" if role == "trailer" else "Фільм"
                 add_source(browser_media, kind, role, label)
 
-        # Sort sources to prioritize 'movie' role
-        sources.sort(key=lambda x: 0 if x.get("role") == "movie" else 1)
+        # Sort sources to prioritize 'movie' role and m3u8 format
+        sources.sort(key=lambda x: (x['role'] == 'trailer', x['kind'] != 'm3u8'))
 
         if sources:
             primary = _pick_primary_source(sources)

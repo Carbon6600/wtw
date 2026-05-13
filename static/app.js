@@ -71,35 +71,38 @@
         let extractedSources = [];
         let currentActiveSource = null;
 
-        function renderMediaTabs(sources) {
-            const mediaSelector = document.getElementById("mediaSelector");
-            mediaSelector.innerHTML = ""; // Очистити попередні кнопки
-
-            if (!Array.isArray(sources) || sources.length < 2) {
-                mediaSelector.style.display = "none";
+        function renderRoleButtons(sources, activeSource) {
+            const tabsContainer = document.getElementById("mediaTabs");
+            tabsContainer.innerHTML = "";
+            
+            if (!sources || sources.length === 0) {
+                tabsContainer.style.display = "none";
                 return;
             }
 
-            mediaSelector.style.display = "flex"; // Показати контейнер
-
-            sources.forEach((source, index) => {
+            const roles = [...new Set(sources.map(s => s.role))];
+            
+            tabsContainer.style.display = "flex";
+            
+            roles.forEach(role => {
                 const button = document.createElement("button");
-                button.className = "btn-secondary media-tab-btn";
-                button.textContent = source.label;
-                button.onclick = () => switchMediaSource(index);
-                if (currentActiveSource && currentActiveSource.url === source.url) {
+                button.className = "btn-secondary source-tab-btn";
+                button.textContent = role === "movie" ? "🎬 Фільм" : "🎥 Трейлер";
+                
+                const bestSourceForRole = sources.find(s => s.role === role);
+                
+                button.onclick = () => {
+                    document.querySelectorAll(".source-tab-btn").forEach(b => b.classList.remove("active"));
+                    button.classList.add("active");
+                    loadExtractedSource(bestSourceForRole);
+                };
+
+                if (activeSource && activeSource.role === role) {
                     button.classList.add("active");
                 }
-                mediaSelector.appendChild(button);
-            });
-        }
 
-        function switchMediaSource(index) {
-            const source = extractedSources[index];
-            if (source) {
-                loadExtractedSource(source);
-                showNotification(`🎬 Перемкнено на: ${source.label}`, "success");
-            }
+                tabsContainer.appendChild(button);
+            });
         }
 
         function generateId() { return Math.random().toString(36).substr(2, 9); }
@@ -289,6 +292,7 @@
             const markersBar = document.getElementById('markersBar');
             const legalGuardrailBox = document.getElementById('legalGuardrailBox');
             const legalConsentCheckbox = document.getElementById('legalConsentCheckbox');
+            const mediaTabs = document.getElementById('mediaTabs');
             const extractSourceTabs = document.getElementById('extractSourceTabs');
             
             // Скидаємо все
@@ -406,33 +410,24 @@
 
             document.getElementById('videoUrl').value = directUrl;
             currentActiveSource = source;
-            renderMediaTabs(extractedSources);
+            renderRoleButtons(extractedSources, currentActiveSource); // Оновлюємо вкладки при зміні джерела
 
-            if (kind === 'm3u8') {
-                setVideoType('playerjs');
+            if (kind === "m3u8") {
+                setVideoType("playerjs");
                 loadPlayerJS(directUrl);
-            } else if (kind === 'mp4') {
-                setVideoType('html5');
+            } else if (kind === "mp4") {
+                setVideoType("html5");
                 loadHTML5(directUrl);
             } else {
-                showNotification('⚠️ Прямого відео не знайдено — відкриваю плеєр/вбудовану сторінку', 'warning');
-                setVideoType('iframe');
+                showNotification("⚠️ Прямого відео не знайдено — відкриваю плеєр/вбудовану сторінку", "warning");
+                setVideoType("iframe");
                 loadIframe(directUrl);
             }
-            renderExtractSourceTabs(extractedSources, directUrl);
-        }
-
-        function switchExtractSource(index) {
-            const source = extractedSources[index];
-            if (!source) return;
-            loadExtractedSource(source);
-            const label = source.label || (source.role === 'trailer' ? 'Трейлер' : 'Фільм');
-            showNotification(`🎬 Перемкнено: ${label}`, 'success');
         }
 
         async function extractSiteAndLoad(pageUrl) {
-            updateSyncStatus('🔎 Шукаю відео на сторінці...', 'syncing');
-            const container = document.getElementById('videoPlayer');
+            updateSyncStatus("🔎 Шукаю відео на сторінці...", "syncing");
+            const container = document.getElementById("videoPlayer");
             container.innerHTML = `
                 <div class="info-box super-info" style="margin:0;">
                     ⏳ Витягую посилання на відео з сайту...<br>
@@ -441,12 +436,12 @@
             `;
 
             try {
-                const useAI = document.getElementById('useAiCheckbox')?.checked || false;
-                const res = await fetch('/api/extract', {
-                    method: 'POST',
+                const useAI = document.getElementById("useAiCheckbox")?.checked || false;
+                const res = await fetch("/api/extract", {
+                    method: "POST",
                     headers: {
-                        'Content-Type': 'application/json',
-                        'X-W2W-Legal-Ack': '1'
+                        "Content-Type": "application/json",
+                        "X-W2W-Legal-Ack": "1"
                     },
                     body: JSON.stringify({ url: pageUrl, useAI })
                 });
@@ -456,43 +451,40 @@
                 }
 
                 const data = await res.json();
-                const directUrl = data.directUrl;
-                const kind = data.kind;
-                const responseSources = Array.isArray(data.sources) ? data.sources : [];
-                extractedSources = responseSources.length > 0
-                    ? responseSources
-                    : [{ url: directUrl, kind: kind || 'unknown', role: 'movie', label: 'Фільм' }];
+                extractedSources = Array.isArray(data.sources) ? data.sources : [];
+                if (extractedSources.length === 0 && data.directUrl) {
+                    extractedSources.push({ url: data.directUrl, kind: data.kind || "unknown", role: "movie", label: "Фільм" });
+                }
 
-                const preferred = choosePreferredExtractSource(extractedSources);
-                if (!preferred || !preferred.url) throw new Error('Порожня відповідь від екстрактора');
+                if (extractedSources.length === 0) throw new Error("Порожня відповідь від екстрактора");
 
-                currentActiveSource = preferred;
-                loadExtractedSource(preferred);
-                renderMediaTabs(extractedSources);
+                currentActiveSource = extractedSources[0];
+                loadExtractedSource(currentActiveSource);
+                renderRoleButtons(extractedSources, currentActiveSource);
 
                 addSystemMessage(`${userName} витягнув відео з сайту 🔎`);
             } catch (e) {
-                console.error('extractSiteAndLoad error:', e);
+                console.error("extractSiteAndLoad error:", e);
                 extractedSources = [];
                 currentActiveSource = null;
-                renderMediaTabs([]);
-                updateSyncStatus('❌ Не вдалося витягнути відео', 'offline');
-                showNotification('❌ Не вдалося витягнути відео з сайту. Спробуйте інший фільм або режим (стрім/iframe).', 'error');
+                renderRoleButtons([]);
+                updateSyncStatus("❌ Не вдалося витягнути відео", "offline");
+                showNotification("❌ Не вдалося витягнути відео з сайту. Спробуйте інший фільм або режим (стрім/iframe).", "error");
             }
         }
 
         function clearVideo() {
-            document.getElementById('videoPlayer').innerHTML = '';
-            document.getElementById('videoUrl').value = '';
+            document.getElementById("videoPlayer").innerHTML = "";
+            document.getElementById("videoUrl").value = "";
             extractedSources = [];
             currentActiveSource = null;
-            renderMediaTabs([]);
-            updateSyncStatus('Очікування відео...', 'success');
+            renderRoleButtons([]); // Очистити вкладки джерел
+            updateSyncStatus("Очікування відео...", "success");
             
             if (roomRef) {
-                roomRef.child('video').set({
-                    type: 'none',
-                    url: '',
+                roomRef.child("video").set({
+                    type: "none",
+                    url: "",
                     updatedBy: userId,
                     updatedAt: firebase.database.ServerValue.TIMESTAMP
                 });

@@ -63,7 +63,7 @@ _MEDIA_IN_TEXT_RE = re.compile(
     re.IGNORECASE | re.VERBOSE,
 )
 _BROWSER_FIRST_HINTS = ("uakino", "uaserials", "rezka", "hdrezka", "kinogo")
-_TRAILER_HINTS = ("trailer", "trailer_", "trailers", "трейлер", "тизер", "teaser")
+_TRAILER_HINTS = ("trailer", "trailer_", "trailers", "трейлер", "тизер", "teaser", "soapdish.1991")
 
 
 async def _analyze_html_with_ai(html: str, page_url: str) -> list[str]:
@@ -230,10 +230,17 @@ def _extract_candidates_from_html(html: str, base_url: str) -> list[str]:
             if s_src:
                 candidates.append(s_src)
 
-    for iframe in soup.select("iframe"):
+    for tag in soup.select("iframe"):
         src = iframe.get("src")
+        title = (iframe.get("title") or "").lower()
         if src:
-            candidates.append(src)
+            # Пріоритет для основного плеєра над трейлером в HTML
+            if "трейлер" in title or "trailer" in title or "/trailer/" in src:
+                # Додаємо в кінець списку
+                candidates.append(src)
+            else:
+                # Додаємо в початок
+                candidates.insert(0, src)
 
     for tag in soup.select("script"):
         txt = tag.string or ""
@@ -388,16 +395,21 @@ async def _extract_with_browser(page_url: str) -> list[str]:
             await page.wait_for_timeout(1500)
 
             # 1. Try to find and click "Movie" tab first
-            movie_tab_hints = ["фільм", "фильм", "дивити", "смотреть", "online", "онлайн", "full movie"]
-            tab_selectors = ["#tabs > ul > li", ".player-tabs li", ".tabs li", ".id-tabs li"]
+            movie_tab_hints = ["плеєр", "плеер", "фільм", "фильм", "дивити", "смотреть", "online", "онлайн", "full movie"]
+            trailer_tab_hints = ["трейлер", "trailer"]
+            tab_selectors = ["#tabs > ul > li", ".player-tabs li", ".tabs li", ".id-tabs li", ".tabs_link"]
             
             for tab_sel in tab_selectors:
                 try:
                     tabs = await page.query_selector_all(tab_sel)
                     for tab in tabs:
                         text = (await tab.inner_text()).lower()
+                        # Якщо це трейлер, пропускаємо
+                        if any(th in text for th in trailer_tab_hints):
+                            continue
+
                         # Якщо вкладка вже активна, не клікаємо (або перевіряємо чи це не трейлер)
-                        is_active = await tab.evaluate("(node) => node.classList.contains('current') || node.hasAttribute('actived')")
+                        is_active = await tab.evaluate("(node) => node.classList.contains('current') || node.hasAttribute('actived') || node.classList.contains('visible')")
                         
                         if any(hint in text for hint in movie_tab_hints):
                             if not is_active:

@@ -204,6 +204,8 @@ def _infer_role(url: str) -> str:
     text = url.lower()
     if any(h in text for h in _TRAILER_HINTS):
         return "trailer"
+    if "/films/" in text or "/movie/" in text:
+        return "movie"
     return "movie"
 
 
@@ -387,6 +389,8 @@ async def _extract_with_browser(page_url: str) -> list[str]:
 
             # Try clicking typical "Play" controls on page or within iframes
             selectors = [
+                "iframe[src*='player'], iframe[src*='embed']",
+                "div[id*='player'], div[class*='player']",
                 "button[aria-label*='Play' i]",
                 ".jw-icon-play",
                 ".jw-display-icon-container",
@@ -401,8 +405,8 @@ async def _extract_with_browser(page_url: str) -> list[str]:
                 for sel in selectors:
                     try:
                         print(f"Trying selector: {sel}")
-                        await f.click(sel, timeout=1500)
-                        await page.wait_for_timeout(800)
+                        await f.click(sel, timeout=2000) # Збільшено таймаут для кліка
+                        await page.wait_for_timeout(1500) # Збільшено час очікування після кліка
                         if media_urls:
                             return True
                     except Exception as e:
@@ -429,10 +433,11 @@ async def _extract_with_browser(page_url: str) -> list[str]:
                     print(f"Keyboard fallback failed: {e}")
 
             # Wait a bit for network after clicks
+            # Збільшено час очікування для захоплення всіх медіа URL після кліків
             for _ in range(20):
                 if media_urls:
                     break
-                await page.wait_for_timeout(500)
+                await page.wait_for_timeout(1000) # Збільшено до 1 секунди
 
             # Last fallback: check rendered HTML for media URLs
             if not media_urls:

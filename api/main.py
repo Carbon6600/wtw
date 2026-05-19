@@ -230,9 +230,9 @@ def _extract_candidates_from_html(html: str, base_url: str) -> list[str]:
             if s_src:
                 candidates.append(s_src)
 
-    for tag in soup.select("iframe"):
-        src = iframe.get("src")
-        title = (iframe.get("title") or "").lower()
+    for iframe_tag in soup.select("iframe"):
+        src = iframe_tag.get("src")
+        title = (iframe_tag.get("title") or "").lower()
         if src:
             # Пріоритет для основного плеєра над трейлером в HTML
             if "трейлер" in title or "trailer" in title or "/trailer/" in src:

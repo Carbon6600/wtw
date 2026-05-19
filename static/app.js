@@ -987,8 +987,11 @@
             addSystemMessage(`${userName} активував СУПЕР-синхронізацію iframe 🌟`);
         }
 
+        let iframeAutomationDone = false;
+
         function startIframeTimeDetector() {
             if (iframeChecker) clearInterval(iframeChecker);
+            iframeAutomationDone = false;
             
             iframeChecker = setInterval(() => {
                 if (!currentIframe || videoType !== 'iframe-sync') return;
@@ -997,6 +1000,37 @@
                     const iframeDoc = currentIframe.contentDocument || currentIframe.contentWindow.document;
                     
                     if (iframeDoc) {
+                        // Спроба автоматичного перемикання на вкладку фільму та натискання Play
+                        if (!iframeAutomationDone) {
+                            const tabHints = ["фільм", "фильм", "дивити", "смотреть", "online", "онлайн"];
+                            const tabs = iframeDoc.querySelectorAll("#tabs > ul > li, .player-tabs li, .tabs li");
+                            
+                            let foundTab = false;
+                            for (const tab of tabs) {
+                                const text = (tab.innerText || "").toLowerCase();
+                                if (tabHints.some(hint => text.includes(hint))) {
+                                    if (!tab.classList.contains("current") && !tab.hasAttribute("actived")) {
+                                        tab.click();
+                                        console.log("🤖 W2W: Автоматично переключено на вкладку фільму");
+                                    }
+                                    foundTab = true;
+                                    break;
+                                }
+                            }
+                            
+                            const playSelectors = [".jw-display-icon-container", ".vjs-big-play-button", ".plyr__control--overlaid", ".play-btn", "video"];
+                            for (const sel of playSelectors) {
+                                const btn = iframeDoc.querySelector(sel);
+                                if (btn) {
+                                    btn.click();
+                                    console.log("🤖 W2W: Автоматично натиснуто Play");
+                                    break;
+                                }
+                            }
+                            
+                            iframeAutomationDone = true;
+                        }
+
                         // Шукаємо всі можливі відео-елементи
                         const videos = iframeDoc.querySelectorAll('video, .video-js video, .jw-video, [data-video]');
                         

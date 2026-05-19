@@ -387,7 +387,30 @@ async def _extract_with_browser(page_url: str) -> list[str]:
                 print("Network idle state not reached.")
             await page.wait_for_timeout(1500)
 
-            # Try clicking typical "Play" controls on page or within iframes
+            # 1. Try to find and click "Movie" tab first
+            movie_tab_hints = ["фільм", "фильм", "дивити", "смотреть", "online", "онлайн", "full movie"]
+            tab_selectors = ["#tabs > ul > li", ".player-tabs li", ".tabs li", ".id-tabs li"]
+            
+            for tab_sel in tab_selectors:
+                try:
+                    tabs = await page.query_selector_all(tab_sel)
+                    for tab in tabs:
+                        text = (await tab.inner_text()).lower()
+                        # Якщо вкладка вже активна, не клікаємо (або перевіряємо чи це не трейлер)
+                        is_active = await tab.evaluate("(node) => node.classList.contains('current') || node.hasAttribute('actived')")
+                        
+                        if any(hint in text for hint in movie_tab_hints):
+                            if not is_active:
+                                print(f"Found movie tab: '{text}'. Clicking...")
+                                await tab.click()
+                                await page.wait_for_timeout(2500) # Give it time to load the player
+                            else:
+                                print(f"Movie tab '{text}' is already active.")
+                            break
+                except Exception as e:
+                    print(f"Tab interaction failed for {tab_sel}: {e}")
+
+            # 2. Try clicking typical "Play" controls on page or within iframes
             selectors = [
                 "iframe[src*='player'], iframe[src*='embed']",
                 "div[id*='player'], div[class*='player']",
@@ -397,8 +420,12 @@ async def _extract_with_browser(page_url: str) -> list[str]:
                 ".vjs-big-play-button",
                 ".plyr__control--overlaid",
                 ".play",
+                ".play-btn",
+                ".play-button",
                 "[data-play]",
                 "video",
+                "#player-video",
+                "#player_code",
             ]
 
             async def try_click_in_frame(f):
